@@ -4,52 +4,249 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login — Checklist SPIP</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    /* Animated gradient background */
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .animated-gradient {
+      background: linear-gradient(-45deg, #1e3a8a, #1e40af, #3730a3, #1e3a8a);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+    }
+
+    /* Floating blob */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) translateX(0px); }
+      50% { transform: translateY(-20px) translateX(10px); }
+    }
+    .float-slow { animation: float 8s ease-in-out infinite; }
+    .float-slower { animation: float 12s ease-in-out infinite; }
+
+    /* Fade in */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in-up { animation: fadeInUp 0.6s ease-out; }
+    .fade-in-up-delay { animation: fadeInUp 0.6s ease-out 0.2s both; }
+    .fade-in-up-delay-2 { animation: fadeInUp 0.6s ease-out 0.4s both; }
+
+    /* Google button custom style */
+    .g_id_signin iframe {
+      border-radius: 12px !important;
+    }
+
+    /* Feature item hover */
+    .feature-item { transition: all 0.3s ease; }
+    .feature-item:hover { transform: translateX(4px); }
+  </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4">
+<body class="min-h-screen">
 
-  <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+  <!-- ============ MAIN CONTAINER ============ -->
+  <div class="min-h-screen flex">
 
-    <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
-        <span class="text-3xl">📋</span>
+    <!-- ============ LEFT: BRANDING ============ -->
+    <div class="hidden lg:flex lg:w-1/2 xl:w-3/5 animated-gradient relative overflow-hidden">
+
+      <!-- Decorative blobs -->
+      <div class="absolute top-20 -left-20 w-96 h-96 bg-blue-400 rounded-full opacity-10 blur-3xl float-slow"></div>
+      <div class="absolute bottom-20 -right-20 w-96 h-96 bg-indigo-400 rounded-full opacity-10 blur-3xl float-slower"></div>
+      <div class="absolute top-1/2 left-1/3 w-72 h-72 bg-cyan-400 rounded-full opacity-5 blur-3xl float-slow"></div>
+
+      <!-- Grid pattern overlay -->
+      <div class="absolute inset-0 opacity-5" style="background-image: radial-gradient(circle, white 1px, transparent 1px); background-size: 32px 32px;"></div>
+
+      <!-- Content -->
+      <div class="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full text-white">
+
+        <!-- Logo top -->
+        <div class="flex items-center gap-3 fade-in-up">
+          <div class="w-12 h-12 rounded-xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center">
+            <span class="text-2xl">📋</span>
+          </div>
+          <div>
+            <div class="font-bold text-lg">SPIP-Eviden</div>
+            <div class="text-xs text-blue-200">Sistem Pengendalian Intern Pemerintah</div>
+          </div>
+        </div>
+
+        <!-- Hero -->
+        <div class="fade-in-up-delay">
+          <h1 class="text-4xl xl:text-5xl font-bold leading-tight mb-4">
+            Monitoring<br>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-200">
+              Eviden & Progress
+            </span><br>
+            Penilaian SPIP
+          </h1>
+          <p class="text-blue-100 text-lg max-w-md">
+            Kelola checklist, pantau progress, dan ambil link upload dokumen pendukung dalam satu tempat.
+          </p>
+        </div>
+
+        <!-- Features -->
+        <div class="space-y-4 fade-in-up-delay-2">
+          <div class="feature-item flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="font-semibold text-sm">Checklist Parameter Lengkap</div>
+              <div class="text-xs text-blue-200">Grade A–E, kriteria, penjelasan, dan uraian hasil</div>
+            </div>
+          </div>
+
+          <div class="feature-item flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+            </div>
+            <div>
+              <div class="font-semibold text-sm">Upload Eviden ke Drive</div>
+              <div class="text-xs text-blue-200">Link folder otomatis per parameter SPIP</div>
+            </div>
+          </div>
+
+          <div class="feature-item flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="font-semibold text-sm">Dashboard Progress</div>
+              <div class="text-xs text-blue-200">Pantau capaian per unit, periode, dan KK</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-xs text-blue-300 fade-in-up-delay-2">
+          © <span id="year"></span> BKHIT Sultra · SPIP-Eviden v1.0
+        </div>
+
       </div>
-      <h1 class="text-2xl font-bold text-gray-800">Checklist Dokumen SPIP</h1>
-      <p class="text-sm text-gray-500 mt-1">Monitoring eviden & progress penilaian</p>
     </div>
 
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-800">
-      Silakan login menggunakan akun Google instansi Anda.
-    </div>
+    <!-- ============ RIGHT: LOGIN FORM ============ -->
+    <div class="w-full lg:w-1/2 xl:w-2/5 bg-gray-50 flex items-center justify-center p-6 sm:p-12">
 
-    <div class="flex justify-center mb-6">
-      <div id="g_id_onload"
-           data-client_id="XXXXX.apps.googleusercontent.com"
-           data-callback="handleCredentialResponse">
+      <div class="w-full max-w-md">
+
+        <!-- Mobile logo -->
+        <div class="lg:hidden text-center mb-8 fade-in-up">
+          <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
+            <span class="text-3xl">📋</span>
+          </div>
+          <h1 class="text-2xl font-bold text-gray-800">SPIP-Eviden</h1>
+          <p class="text-sm text-gray-500 mt-1">Checklist & Monitoring SPIP</p>
+        </div>
+
+        <!-- Card -->
+        <div class="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-8 sm:p-10 fade-in-up">
+
+          <!-- Title -->
+          <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Selamat Datang 👋</h2>
+            <p class="text-sm text-gray-500">
+              Silakan masuk menggunakan akun Google instansi Anda untuk melanjutkan.
+            </p>
+          </div>
+
+          <!-- Alert info -->
+          <div class="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+            <svg class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="text-xs text-blue-800 leading-relaxed">
+              <div class="font-semibold mb-0.5">Akses Terbatas</div>
+              Hanya email yang telah terdaftar oleh admin yang dapat mengakses aplikasi ini.
+            </div>
+          </div>
+
+          <!-- Google Sign In -->
+          <div class="space-y-4">
+            <div id="g_id_onload"
+                 data-client_id="XXXXX.apps.googleusercontent.com"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+
+            <div class="flex justify-center">
+              <div class="g_id_signin"
+                   data-type="standard"
+                   data-size="large"
+                   data-theme="outline"
+                   data-text="signin_with"
+                   data-shape="rectangular"
+                   data-logo_alignment="left"
+                   data-width="320">
+              </div>
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div class="relative my-8">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-200"></div>
+            </div>
+            <div class="relative flex justify-center text-xs uppercase">
+              <span class="bg-white px-3 text-gray-400 tracking-wider">Butuh Bantuan?</span>
+            </div>
+          </div>
+
+          <!-- Help -->
+          <div class="text-center text-sm text-gray-500">
+            Belum punya akses? Hubungi
+            <a href="mailto:admin@bkhit-sultra.go.id" class="text-blue-700 hover:underline font-medium">
+              Administrator
+            </a>
+          </div>
+
+        </div>
+
+        <!-- Trust indicators -->
+        <div class="mt-6 flex items-center justify-center gap-6 text-xs text-gray-400 fade-in-up-delay">
+          <div class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            Aman & Terenkripsi
+          </div>
+          <div class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            Cepat & Ringan
+          </div>
+        </div>
+
       </div>
-      <div class="g_id_signin"
-           data-type="standard"
-           data-size="large"
-           data-theme="outline"
-           data-text="signin_with"
-           data-shape="rectangular"
-           data-logo_alignment="left"></div>
     </div>
 
-    <div class="text-center text-xs text-gray-400">
-      Hanya email terdaftar yang dapat mengakses aplikasi ini.
-    </div>
   </div>
 
+  <!-- ============ SCRIPTS ============ -->
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>
   <script>
-    // Set client ID dari config
-    document.querySelector('.g_id_signin').parentElement
-      .querySelector('#g_id_onload')
-      .setAttribute('data-client_id', CONFIG.GOOGLE_CLIENT_ID);
+    // Tahun otomatis
+    document.getElementById('year').textContent = new Date().getFullYear();
 
+    // Set client ID dari config ke elemen Google
+    const clientId = CONFIG.GOOGLE_CLIENT_ID;
+    document.getElementById('g_id_onload').setAttribute('data-client_id', clientId);
+
+    // Callback Google Sign-In
     function handleCredentialResponse(response) {
       AUTH.handleCredential(response);
     }
@@ -59,5 +256,6 @@
       window.location.href = 'dashboard.html';
     }
   </script>
+
 </body>
 </html>
