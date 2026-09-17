@@ -23,9 +23,10 @@
   <!-- ============================================== -->
   <!-- MODAL EVIDEN (Tambah / Edit / Upload)          -->
   <!-- ============================================== -->
+  <!-- MODAL EVIDEN -->
   <div id="modalEviden" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full modal-content">
-
+  
       <!-- Header -->
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <h3 id="modalTitle" class="font-bold text-lg text-slate-800">Tambah Item Lampiran</h3>
@@ -35,15 +36,15 @@
           </svg>
         </button>
       </div>
-
+  
       <!-- Body -->
       <div class="p-6 space-y-4">
-
-        <!-- Info grade (readonly) -->
+  
+        <!-- Grade info -->
         <div id="modalGradeInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700">
           Menambahkan untuk <span id="modalGradeText" class="font-semibold">Grade A</span>
         </div>
-
+  
         <!-- Nama dokumen -->
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1.5">
@@ -51,25 +52,71 @@
           </label>
           <input type="text" id="modalNama" required
                  class="input" placeholder="mis. Reakp Money disiplin pegawai"/>
-          <div class="text-xs text-slate-400 mt-1">
-            Isi dengan nama dokumen yang akan dilampirkan
-          </div>
         </div>
-
-        <!-- Link dokumen (hanya tampil di mode upload/edit) -->
-        <div id="modalLinkGroup" class="hidden">
+  
+        <!-- File Upload (muncul di mode upload & edit) -->
+        <div id="modalFileGroup" class="hidden">
           <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Link Google Drive / URL
+            File Dokumen <span class="text-rose-500">*</span>
           </label>
-          <input type="url" id="modalLink"
-                 class="input" placeholder="https://drive.google.com/..."/>
-          <div class="text-xs text-slate-400 mt-1">
-            Kosongkan kalau dokumen belum diupload
+  
+          <!-- Drop zone -->
+          <div id="dropZone"
+               class="border-2 border-dashed border-slate-300 hover:border-blue-400 rounded-xl p-6 text-center cursor-pointer transition bg-slate-50 hover:bg-blue-50/30">
+            <input type="file" id="fileInput" class="hidden" />
+            <div id="dropZoneContent">
+              <svg class="w-10 h-10 mx-auto text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              <div class="text-sm text-slate-600 font-medium">
+                Klik untuk pilih file
+              </div>
+              <div class="text-xs text-slate-400 mt-1">
+                atau drag & drop di sini
+              </div>
+              <div class="text-xs text-slate-400 mt-2">
+                PDF, DOC, DOCX, XLS, XLSX, JPG, PNG · Maks 25 MB
+              </div>
+            </div>
+  
+            <!-- Preview file terpilih -->
+            <div id="filePreview" class="hidden text-left">
+              <div class="flex items-center gap-3 bg-white border border-slate-200 rounded-lg p-3">
+                <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium truncate" id="fileNameText">-</div>
+                  <div class="text-xs text-slate-400" id="fileSizeText">-</div>
+                </div>
+                <button type="button" onclick="clearFileSelection(event)"
+                        class="btn btn-ghost p-1.5 text-rose-600 hover:bg-rose-50">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+  
+          <!-- Progress upload -->
+          <div id="uploadProgress" class="hidden mt-3">
+            <div class="flex justify-between text-xs text-slate-500 mb-1">
+              <span>Mengunggah...</span>
+              <span id="progressText">0%</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+              <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
           </div>
         </div>
-
+  
       </div>
-
+  
       <!-- Footer -->
       <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
         <button onclick="closeModal()" class="btn btn-secondary text-sm">Batal</button>
@@ -647,6 +694,36 @@
 
     // ==================== MODAL: UPLOAD ====================
 
+    // ==================== STATE FILE ====================
+
+    let selectedFile = null;
+    
+    // ==================== MODAL: TAMBAH ====================
+    
+    function openModalTambah(idTrans, grade) {
+      modalState = {
+        mode: 'add',
+        idTrans: idTrans,
+        grade: grade,
+        idEviden: null
+      };
+    
+      document.getElementById('modalTitle').textContent = 'Tambah Item Lampiran';
+      document.getElementById('modalGradeInfo').classList.remove('hidden');
+      document.getElementById('modalGradeText').textContent = `Grade ${grade}`;
+      document.getElementById('modalNama').value = '';
+      document.getElementById('modalNama').readOnly = false;
+      document.getElementById('modalFileGroup').classList.add('hidden');
+      document.getElementById('modalSubmitBtn').textContent = 'Simpan';
+    
+      clearFileSelection();
+    
+      showModal('modalEviden');
+      setTimeout(() => document.getElementById('modalNama').focus(), 100);
+    }
+    
+    // ==================== MODAL: UPLOAD ====================
+    
     function openModalUpload(idEviden, nama) {
       modalState = {
         mode: 'upload',
@@ -654,21 +731,21 @@
         grade: null,
         idEviden: idEviden
       };
-
+    
       document.getElementById('modalTitle').textContent = 'Upload Dokumen';
       document.getElementById('modalGradeInfo').classList.add('hidden');
       document.getElementById('modalNama').value = nama;
       document.getElementById('modalNama').readOnly = true;
-      document.getElementById('modalLinkGroup').classList.remove('hidden');
-      document.getElementById('modalLink').value = '';
+      document.getElementById('modalFileGroup').classList.remove('hidden');
       document.getElementById('modalSubmitBtn').textContent = 'Upload';
-
+    
+      clearFileSelection();
+    
       showModal('modalEviden');
-      setTimeout(() => document.getElementById('modalLink').focus(), 100);
     }
-
+    
     // ==================== MODAL: EDIT ====================
-
+    
     function openModalEdit(idEviden, nama, link) {
       modalState = {
         mode: 'edit',
@@ -676,45 +753,55 @@
         grade: null,
         idEviden: idEviden
       };
-
+    
       document.getElementById('modalTitle').textContent = 'Edit Item Lampiran';
       document.getElementById('modalGradeInfo').classList.add('hidden');
       document.getElementById('modalNama').value = nama;
       document.getElementById('modalNama').readOnly = false;
-      document.getElementById('modalLinkGroup').classList.remove('hidden');
-      document.getElementById('modalLink').value = link || '';
+      document.getElementById('modalFileGroup').classList.remove('hidden');
       document.getElementById('modalSubmitBtn').textContent = 'Simpan Perubahan';
-
+    
+      clearFileSelection();
+    
+      // Info: file sudah ada
+      if (link) {
+        const fileGroup = document.getElementById('modalFileGroup');
+        const dropZone = document.getElementById('dropZone');
+    
+        // Tampilkan info file lama
+        let infoOld = document.getElementById('oldFileInfo');
+        if (!infoOld) {
+          infoOld = document.createElement('div');
+          infoOld.id = 'oldFileInfo';
+          infoOld.className = 'bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 mb-3';
+          fileGroup.insertBefore(infoOld, fileGroup.querySelector('label'));
+        }
+        infoOld.innerHTML = `
+          📎 File saat ini: <a href="${APP.esc(link)}" target="_blank" class="font-medium underline">Lihat</a>
+          <div class="text-blue-500 mt-0.5">Upload file baru untuk menggantinya, atau biarkan kosong kalau tidak ingin mengubah.</div>
+        `;
+      }
+    
       showModal('modalEviden');
-      setTimeout(() => document.getElementById('modalNama').focus(), 100);
     }
-
+    
     // ==================== MODAL: SUBMIT ====================
-
+    
     async function submitModal() {
       const nama = document.getElementById('modalNama').value.trim();
-      const link = document.getElementById('modalLink').value.trim();
       const btn = document.getElementById('modalSubmitBtn');
-
-      // Validasi
+    
       if (!nama) {
         alert('Nama dokumen wajib diisi');
         document.getElementById('modalNama').focus();
         return;
       }
-
-      if (modalState.mode === 'upload' && !link) {
-        alert('Link dokumen wajib diisi untuk upload');
-        document.getElementById('modalLink').focus();
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = 'Menyimpan...';
-
-      try {
-        if (modalState.mode === 'add') {
-          // Tambah baru — hanya nama, link kosong
+    
+      // Mode add: cukup nama, tanpa file
+      if (modalState.mode === 'add') {
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+        try {
           await API.addEviden({
             id_trans: modalState.idTrans,
             grade: modalState.grade,
@@ -722,31 +809,224 @@
             jenis: 'file',
             link: ''
           });
-        } else if (modalState.mode === 'upload') {
-          // Update link
+          closeModal();
+          loadChecklist();
+        } catch (err) {
+          alert('Gagal: ' + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Simpan';
+        }
+        return;
+      }
+    
+      // Mode upload: WAJIB ada file
+      if (modalState.mode === 'upload') {
+        if (!selectedFile) {
+          alert('Pilih file terlebih dahulu');
+          return;
+        }
+        await doUploadFile(btn);
+        return;
+      }
+    
+      // Mode edit: boleh tanpa file (hanya edit nama)
+      if (modalState.mode === 'edit') {
+        if (selectedFile) {
+          // Ada file baru → upload + update nama
+          await doUploadFile(btn, nama);
+        } else {
+          // Tidak ada file → update nama saja
+          btn.disabled = true;
+          btn.textContent = 'Menyimpan...';
+          try {
+            await API.updateEviden({
+              id_eviden: modalState.idEviden,
+              nama_dokumen: nama
+            });
+            closeModal();
+            loadChecklist();
+          } catch (err) {
+            alert('Gagal: ' + err.message);
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Perubahan';
+          }
+        }
+        return;
+      }
+    }
+    
+    /**
+     * Proses upload file ke Drive via Apps Script
+     */
+    async function doUploadFile(btn, namaBaru) {
+      if (!selectedFile) return;
+    
+      btn.disabled = true;
+      btn.textContent = 'Mengunggah...';
+    
+      // Tampilkan progress
+      document.getElementById('uploadProgress').classList.remove('hidden');
+      updateProgress(5);
+    
+      try {
+        // Baca file sebagai base64
+        const base64 = await readFileAsBase64(selectedFile);
+        updateProgress(20);
+    
+        // Kirim ke backend
+        const token = AUTH.getToken();
+        const payload = {
+          action: 'uploadEvidenFile',
+          token: token,
+          id_eviden: modalState.idEviden,
+          file_name: selectedFile.name,
+          mime_type: selectedFile.type || 'application/octet-stream',
+          file_data: base64
+        };
+    
+        updateProgress(30);
+    
+        const res = await fetch(CONFIG.API_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+    
+        updateProgress(80);
+    
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+    
+        updateProgress(90);
+    
+        // Kalau mode edit dan ada nama baru
+        if (namaBaru && modalState.mode === 'edit') {
           await API.updateEviden({
             id_eviden: modalState.idEviden,
-            link: link,
-            jenis: 'link'
-          });
-        } else if (modalState.mode === 'edit') {
-          // Edit nama + link
-          await API.updateEviden({
-            id_eviden: modalState.idEviden,
-            nama_dokumen: nama,
-            link: link,
-            jenis: link ? 'link' : 'file'
+            nama_dokumen: namaBaru
           });
         }
-
-        closeModal();
-        loadChecklist();
+    
+        updateProgress(100);
+    
+        setTimeout(() => {
+          closeModal();
+          loadChecklist();
+        }, 300);
+    
       } catch (err) {
-        alert('Gagal: ' + err.message);
+        alert('Gagal upload: ' + err.message);
+        document.getElementById('uploadProgress').classList.add('hidden');
+        updateProgress(0);
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Simpan';
+        btn.textContent = modalState.mode === 'edit' ? 'Simpan Perubahan' : 'Upload';
       }
+    }
+    
+    /**
+     * Baca file sebagai base64 (tanpa prefix data:...)
+     */
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          // result: "data:mime/type;base64,ACTUAL_DATA"
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = () => reject(new Error('Gagal membaca file'));
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    function updateProgress(percent) {
+      document.getElementById('progressBar').style.width = percent + '%';
+      document.getElementById('progressText').textContent = percent + '%';
+    }
+    
+    // ==================== FILE INPUT HANDLING ====================
+    
+    function setupFileInput() {
+      const dropZone = document.getElementById('dropZone');
+      const fileInput = document.getElementById('fileInput');
+    
+      // Klik drop zone → buka file picker
+      dropZone.addEventListener('click', (e) => {
+        if (e.target.closest('#filePreview button')) return; // jangan trigger kalau klik tombol close
+        fileInput.click();
+      });
+    
+      // File dipilih
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleFileSelect(e.target.files[0]);
+        }
+      });
+    
+      // Drag & drop
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-500', 'bg-blue-50/50');
+      });
+    
+      dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+      });
+    
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleFileSelect(e.dataTransfer.files[0]);
+        }
+      });
+    }
+    
+    function handleFileSelect(file) {
+      // Validasi ukuran (25 MB max)
+      const MAX_SIZE = 25 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        alert('Ukuran file terlalu besar. Maksimal 25 MB.');
+        return;
+      }
+    
+      selectedFile = file;
+    
+      // Tampilkan preview
+      document.getElementById('dropZoneContent').classList.add('hidden');
+      document.getElementById('filePreview').classList.remove('hidden');
+      document.getElementById('fileNameText').textContent = file.name;
+      document.getElementById('fileSizeText').textContent = formatFileSize(file.size);
+    }
+    
+    function clearFileSelection(event) {
+      if (event) event.stopPropagation();
+    
+      selectedFile = null;
+      const fi = document.getElementById('fileInput');
+      if (fi) fi.value = '';
+    
+      const preview = document.getElementById('filePreview');
+      const content = document.getElementById('dropZoneContent');
+      if (preview) preview.classList.add('hidden');
+      if (content) content.classList.remove('hidden');
+    
+      const prog = document.getElementById('uploadProgress');
+      if (prog) prog.classList.add('hidden');
+      updateProgress(0);
+    
+      const oldInfo = document.getElementById('oldFileInfo');
+      if (oldInfo) oldInfo.remove();
+    }
+    
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1024 / 1024).toFixed(2) + ' MB';
     }
 
     // ==================== MODAL: HAPUS ====================
