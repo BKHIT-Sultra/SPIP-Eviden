@@ -1,43 +1,45 @@
-/**
- * AUTH HELPER — Google Sign-In
- */
-
 const AUTH = {
-  /**
-   * Cek apakah user sudah login
-   */
   isLoggedIn() {
-    return !!localStorage.getItem('spip_user');
+    const token = this.getToken();
+    const user = this.getUser();
+    if (!token || !user) return false;
+
+    // Cek expiry kalau disimpan
+    const exp = localStorage.getItem('spip_expires');
+    if (exp && new Date(exp) < new Date()) {
+      this.logout();
+      return false;
+    }
+    return true;
   },
 
-  /**
-   * Ambil user yang login
-   */
   getUser() {
     const raw = localStorage.getItem('spip_user');
     return raw ? JSON.parse(raw) : null;
   },
 
-  /**
-   * Simpan user + token
-   */
-  saveUser(user, token) {
+  saveUser(user, token, expiresAt) {
     localStorage.setItem('spip_user', JSON.stringify(user));
     localStorage.setItem('spip_token', token);
+    if (expiresAt) localStorage.setItem('spip_expires', expiresAt);
   },
 
-  /**
-   * Logout
-   */
   logout() {
+    const token = this.getToken();
+    // Fire-and-forget revoke
+    if (token) {
+      fetch(CONFIG.API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'logout', token }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      }).catch(() => {});
+    }
     localStorage.removeItem('spip_user');
     localStorage.removeItem('spip_token');
+    localStorage.removeItem('spip_expires');
     window.location.href = 'index.html';
   },
 
-  /**
-   * Cek login, kalau belum redirect ke index
-   */
   requireLogin() {
     if (!this.isLoggedIn()) {
       window.location.href = 'index.html';
@@ -46,37 +48,8 @@ const AUTH = {
     return true;
   },
 
-  /**
-   * Ambil token
-   */
   getToken() {
     return localStorage.getItem('spip_token');
-  },
-
-  /**
-   * Handle response Google Sign-In
-   */
-  async handleCredential(response) {
-    try {
-      const res = await fetch(CONFIG.API_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'login',
-          token: response.credential
-        }),
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        AUTH.saveUser(data.data.user, data.data.session);
-        window.location.href = 'dashboard.html';
-      } else {
-        alert('Login gagal: ' + data.message);
-      }
-    } catch (err) {
-      alert('Error: ' + err.message);
-    }
   }
 };
 
