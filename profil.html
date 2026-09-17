@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Profil — Checklist SPIP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <div id="navbar"></div>
+
+  <main class="max-w-2xl mx-auto px-4 py-6">
+    <div class="bg-white rounded-xl shadow p-6">
+      <h1 class="text-xl font-bold mb-6">Profil & Ganti Password</h1>
+
+      <div id="userInfo" class="mb-6 bg-gray-50 rounded-lg p-4"></div>
+
+      <form id="pwdForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password Lama</label>
+          <input type="password" id="pwdLama" required
+                 class="w-full border rounded-lg px-3 py-2 text-sm"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+          <input type="password" id="pwdBaru" required minlength="6"
+                 class="w-full border rounded-lg px-3 py-2 text-sm"/>
+          <div class="text-xs text-gray-400 mt-1">Minimal 6 karakter</div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password Baru</label>
+          <input type="password" id="pwdKonfirm" required
+                 class="w-full border rounded-lg px-3 py-2 text-sm"/>
+        </div>
+
+        <div id="msg" class="hidden text-sm rounded-lg p-3"></div>
+
+        <button type="submit"
+                class="w-full bg-blue-700 hover:bg-blue-800 text-white font-medium py-2.5 rounded-lg">
+          Simpan Password Baru
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    AUTH.requireLogin();
+    document.getElementById('navbar').innerHTML = APP.renderNavbar('');
+
+    const user = AUTH.getUser();
+    document.getElementById('userInfo').innerHTML = `
+      <div><span class="text-xs text-gray-500">Username:</span> <b>${APP.esc(user.username)}</b></div>
+      <div><span class="text-xs text-gray-500">Nama:</span> ${APP.esc(user.nama)}</div>
+      <div><span class="text-xs text-gray-500">Role:</span> ${APP.esc(user.role)}</div>
+      <div><span class="text-xs text-gray-500">Unit:</span> ${APP.esc(user.kode_unit || '-')}</div>
+    `;
+
+    document.getElementById('pwdForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const lama = document.getElementById('pwdLama').value;
+      const baru = document.getElementById('pwdBaru').value;
+      const konfirm = document.getElementById('pwdKonfirm').value;
+      const msg = document.getElementById('msg');
+
+      if (baru !== konfirm) {
+        msg.className = 'bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3';
+        msg.textContent = 'Konfirmasi password tidak cocok';
+        return;
+      }
+
+      try {
+        await API.post('changePassword', {
+          password_lama: lama,
+          password_baru: baru
+        });
+        msg.className = 'bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg p-3';
+        msg.textContent = '✓ Password berhasil diubah';
+        document.getElementById('pwdForm').reset();
+      } catch (err) {
+        msg.className = 'bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3';
+        msg.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>
