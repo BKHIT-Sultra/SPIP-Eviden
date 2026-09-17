@@ -260,79 +260,47 @@
 
     function renderItem(item) {
       const t = item.trans;
-      const ev = item.eviden || [];
-      const selectedGrade = t.grade_dipilih; // grade yang dipilih (kalau ada)
+      const allEviden = item.eviden || [];
+      const selectedGrade = t.grade_dipilih;
     
       const sumberBadges = [];
       if (item.sumber.spip) sumberBadges.push('<span class="badge bg-emerald-100 text-emerald-700">SPIP</span>');
       if (item.sumber.mri) sumberBadges.push('<span class="badge badge-proses">MRI</span>');
       if (item.sumber.iepk) sumberBadges.push('<span class="badge bg-violet-100 text-violet-700">IEPK</span>');
     
-      // ✅ Hitung progress eviden
-      const totalEviden = ev.length;
-      const terupload = ev.filter(e => e.status === 'terupload').length;
+      // Hitung total eviden keseluruhan
+      const totalEviden = allEviden.length;
+      const terupload = allEviden.filter(e => e.status === 'terupload').length;
     
-      // ✅ Grades HTML — 3 kolom: Kriteria | Penjelasan | Uraian Hasil
+      // ✅ Render tiap grade — SETIAP grade punya kolom Uraian Hasil + Eviden sendiri
       const gradesHtml = item.grades.map(g => {
-        // Apakah grade ini yang dipilih?
         const isSelected = selectedGrade && g.grade === selectedGrade;
-        // Apakah ini grade A (default tampil eviden jika tidak ada grade dipilih)?
-        const isDefaultGrade = !selectedGrade && g.grade === 'A';
-        const showEviden = isSelected || isDefaultGrade;
+        const gradeUpper = g.grade.toUpperCase();
     
-        // Border & background berbeda untuk grade terpilih
+        // Filter eviden untuk grade ini
+        const ev = allEviden.filter(e => String(e.grade).toUpperCase() === gradeUpper);
+    
         const cardClass = isSelected
           ? 'border-blue-400 bg-blue-50/40 ring-1 ring-blue-200'
           : 'border-slate-100 bg-slate-50';
     
-        // Badge "Dipilih" untuk grade yang dipilih
         const selectedBadge = isSelected
           ? '<span class="badge bg-blue-100 text-blue-700 ml-1">✓ Dipilih</span>'
           : '';
     
-        // Eviden list hanya tampil di grade terpilih
-        let evidenHtml = '';
-        if (showEviden) {
-          if (ev.length > 0) {
-            evidenHtml = ev.map(e => renderEviden(e)).join('');
-          } else {
-            evidenHtml = `
-              <div class="text-xs text-slate-400 italic py-3 text-center border border-dashed border-slate-200 rounded-lg">
-                Belum ada dokumen pendukung
-              </div>`;
-          }
-        }
+        // Eviden list — per grade
+        const evidenHtml = ev.length > 0
+          ? ev.map(e => renderEviden(e)).join('')
+          : `<div class="text-xs text-slate-400 italic py-3 text-center border border-dashed border-slate-200 rounded-lg">
+               Belum ada dokumen pendukung
+             </div>`;
     
-        // Kolom Uraian Hasil — hanya muncul di grade terpilih
-        let uraianHasilCol = '';
-        if (showEviden) {
-          uraianHasilCol = `
-            <div class="md:col-span-1">
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-xs font-semibold text-slate-500 uppercase">Uraian Hasil & Eviden</div>
-                <button onclick="tambahEviden('${item.id_trans}')"
-                        class="text-xs bg-blue-700 hover:bg-blue-800 text-white px-2.5 py-1 rounded-lg inline-flex items-center gap-1">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                  </svg>
-                  Tambah
-                </button>
-              </div>
-    
-              ${t.uraian_hasil ? `
-                <div class="bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-700 mb-3 leading-relaxed">
-                  ${APP.esc(t.uraian_hasil)}
-                </div>
-              ` : `
-                <div class="text-xs text-slate-400 italic mb-3 py-2 text-center">
-                  Belum ada uraian hasil
-                </div>
-              `}
-    
-              <div class="space-y-2">${evidenHtml}</div>
-            </div>
-          `;
-        }
+        // Uraian hasil — per grade
+        const uraianHtml = t.uraian_hasil && isSelected
+          ? `<div class="bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-700 mb-3 leading-relaxed">
+               ${APP.esc(t.uraian_hasil)}
+             </div>`
+          : '';
     
         return `
           <div class="p-4 rounded-xl border ${cardClass} mb-2">
@@ -341,10 +309,11 @@
               <span class="${APP.gradeClass(g.grade)}">Grade ${g.grade}</span>
               <span class="text-xs text-slate-500">Cara: ${APP.esc(g.cara_pengujian)}</span>
               ${selectedBadge}
+              ${ev.length > 0 ? `<span class="badge bg-emerald-100 text-emerald-700">📎 ${ev.filter(e => e.status === 'terupload').length}/${ev.length} dokumen</span>` : ''}
             </div>
     
-            <!-- Grid: Kriteria | Penjelasan | Uraian Hasil (kalau dipilih) -->
-            <div class="grid ${showEviden ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4">
+            <!-- Grid 3 kolom -->
+            <div class="grid md:grid-cols-3 gap-4">
               <!-- Kolom 1: Kriteria -->
               <div>
                 <div class="text-xs font-semibold text-slate-500 uppercase mb-1.5">Kriteria</div>
@@ -357,14 +326,29 @@
                 <div class="text-sm text-slate-700 leading-relaxed">${formatPenjelasan(g.penjelasan)}</div>
               </div>
     
-              <!-- Kolom 3: Uraian Hasil + Eviden (hanya grade terpilih) -->
-              ${uraianHasilCol}
+              <!-- Kolom 3: Uraian Hasil + Eviden (SETIAP grade) -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <div class="text-xs font-semibold text-slate-500 uppercase">Uraian Hasil & Eviden</div>
+                  <button onclick="tambahEviden('${item.id_trans}', '${g.grade}')"
+                          class="text-xs bg-blue-700 hover:bg-blue-800 text-white px-2.5 py-1 rounded-lg inline-flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Tambah
+                  </button>
+                </div>
+    
+                ${uraianHtml}
+    
+                <div class="space-y-2">${evidenHtml}</div>
+              </div>
             </div>
           </div>
         `;
       }).join('');
     
-      // ✅ Ringkasan di header item
+      // Total eviden di header
       const evidenCount = totalEviden > 0
         ? `${terupload}/${totalEviden} dokumen terupload`
         : '';
@@ -414,7 +398,6 @@
             <div class="text-xs font-semibold text-slate-500 uppercase mb-3">Referensi Grade</div>
             ${gradesHtml}
     
-            <!-- Action Bar -->
             <div class="mt-5 flex flex-wrap gap-2 justify-end pt-4 border-t border-slate-200">
               <button onclick="ambilLinkUpload('${item.id_trans}')" class="btn btn-secondary text-xs">
                 📁 Ambil Link Upload
@@ -517,14 +500,23 @@
       } catch (err) { alert('Gagal: ' + err.message); }
     }
 
-    async function tambahEviden(idTrans) {
-      const nama = prompt('Nama dokumen:');
+    async function tambahEviden(idTrans, grade) {
+      const nama = prompt(`Nama dokumen (Grade ${grade}):`);
       if (!nama) return;
       const link = prompt('Link (opsional):') || '';
+      
       try {
-        await API.addEviden({ id_trans: idTrans, nama_dokumen: nama, jenis: link ? 'link' : 'file', link });
+        await API.addEviden({
+          id_trans: idTrans,
+          grade: grade,
+          nama_dokumen: nama,
+          jenis: link ? 'link' : 'file',
+          link: link
+        });
         loadChecklist();
-      } catch (err) { alert('Gagal: ' + err.message); }
+      } catch (err) {
+        alert('Gagal: ' + err.message);
+      }
     }
 
     async function editEviden(idEviden, namaLama, linkLama) {
