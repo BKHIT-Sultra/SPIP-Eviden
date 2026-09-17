@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — Checklist SPIP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <div id="navbar"></div>
+
+  <!-- FILTER BAR -->
+  <div class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-3 items-center">
+      <div>
+        <label class="text-xs text-gray-500">Unit</label>
+        <select id="filterUnit" class="block border rounded-lg px-3 py-1.5 text-sm"></select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500">Periode</label>
+        <select id="filterPeriode" class="block border rounded-lg px-3 py-1.5 text-sm"></select>
+      </div>
+      <button onclick="loadDashboard()" class="ml-auto bg-blue-700 hover:bg-blue-800 text-white text-sm px-4 py-2 rounded-lg">
+        Terapkan
+      </button>
+    </div>
+  </div>
+
+  <main id="content" class="max-w-7xl mx-auto px-4 py-6"></main>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    AUTH.requireLogin();
+    document.getElementById('navbar').innerHTML = APP.renderNavbar('dashboard');
+
+    let chartStatus = null;
+    let chartKK = null;
+
+    async function init() {
+      try {
+        // Load unit & periode
+        const [units, periodes] = await Promise.all([
+          API.getUnits(),
+          API.getPeriodes()
+        ]);
+
+        const selUnit = document.getElementById('filterUnit');
+        selUnit.innerHTML = units.map(u =>
+          `<option value="${u.kode_unit}">${APP.esc(u.nama_unit)}</option>`
+        ).join('');
+
+        const selPeriode = document.getElementById('filterPeriode');
+        selPeriode.innerHTML = periodes
+          .filter(p => p.status === 'aktif')
+          .map(p => `<option value="${p.periode}">${APP.esc(p.nama_periode)}</option>`)
+          .join('');
+
+        // Default: unit user
+        const user = AUTH.getUser();
+        if (user && user.kode_unit) selUnit.value = user.kode_unit;
+
+        loadDashboard();
+      } catch (err) {
+        APP.showError(document.getElementById('content'), err.message);
+      }
+    }
+
+    async function loadDashboard() {
+      const unit = document.getElementById('filterUnit').value;
+      const periode = document.getElementById('filterPeriode').value;
+      const content = document.getElementById('content');
+
+      APP.showLoading(content);
+
+      try {
+        const data = await API.getDashboard(unit, periode);
+        renderDashboard(data, unit, periode);
+      } catch (err) {
+        APP.showError(content, err.message);
+      }
+    }
+
+    function renderDashboard(data, unit, periode) {
+      const content = document.getElementById('content');
+
+      content.innerHTML = `
+        <!-- STAT CARDS -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white rounded-xl shadow p-4">
+            <div class="text-xs text-gray-500 uppercase">Total Parameter</div>
+            <div class="text-2xl font-bold text-gray-800">${data.total_parameter}</div>
+            <div class="text-xs text-gray-400 mt-1">Semua KK</div>
+          </div>
+          <div class="bg-white rounded-xl shadow p-4">
+            <div class="text-xs text-gray-500 uppercase">Selesai</div>
+            <div class="text-2xl font-bold text-green-600">${data.status.Selesai}</div>
+            <div class="text-xs text-green-500 mt-1">${data.progress}%</div>
+          </div>
+          <div class="bg-white rounded-xl shadow p-4">
+            <div class="text-xs text-gray-500 uppercase">Proses / Upload</div>
+            <div class="text-2xl font-bold text-yellow-600">${data.status.Upload + data.status.Proses}</div>
+            <div class="text-xs text-yellow-500 mt-1">sedang berjalan</div>
+          </div>
+          <div class="bg-white rounded-xl shadow p-4">
+            <div class="text-xs text-gray-500 uppercase">Belum Mulai</div>
+            <div class="text-2xl font-bold text-red-600">${data.status.Belum}</div>
+            <div class="text-xs text-red-500 mt-1">perlu ditindak</div>
+          </div>
+        </div>
+
+        <!-- PROGRESS BAR -->
+        <div class="bg-white rounded-xl shadow p-5 mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <h2 class="font-semibold text-gray-700">Progress Keseluruhan</h2>
+            <span class="text-sm font-bold text-blue-700">${data.progress}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-700 h-3 rounded-full" style="width: ${data.progress}%"></div>
+          </div>
+          <div class="flex flex-wrap gap-4 mt-3 text-xs text-gray-500">
+            <span>✓ Selesai: ${data.status.Selesai}</span>
+            <span>🔍 Verifikasi: ${data.status.Verifikasi}</span>
+            <span>📤 Upload: ${data.status.Upload}</span>
+            <span>⏳ Proses: ${data.status.Proses}</span>
+            <span>⚪ Belum: ${data.status.Belum}</span>
+            <span>🔄 Revisi: ${data.status.Revisi}</span>
+          </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="grid md:grid-cols-3 gap-6 mb-6">
+          <div class="bg-white rounded-xl shadow p-5 md:col-span-1">
+            <h2 class="font-semibold text-gray-700 mb-3">Status Eviden</h2>
+            <canvas id="chartStatus" height="200"></canvas>
+          </div>
+          <div class="bg-white rounded-xl shadow p-5 md:col-span-2">
+            <h2 class="font-semibold text-gray-700 mb-3">Progress per KK</h2>
+            <canvas id="chartKK" height="120"></canvas>
+          </div>
+        </div>
+
+        <!-- TABEL PER KK -->
+        <div class="bg-white rounded-xl shadow overflow-hidden">
+          <div class="px-5 py-4 border-b">
+            <h2 class="font-semibold text-gray-700">Rincian per Kelompok Kriteria (KK)</h2>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                <tr>
+                  <th class="px-4 py-3 text-left">Kode</th>
+                  <th class="px-4 py-3 text-center">Total</th>
+                  <th class="px-4 py-3 text-center">Selesai</th>
+                  <th class="px-4 py-3 text-left">Progress</th>
+                  <th class="px-4 py-3 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                ${data.per_kk.map(kk => `
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 font-mono text-blue-700">KK ${kk.kode_kk}</td>
+                    <td class="px-4 py-3 text-center">${kk.total}</td>
+                    <td class="px-4 py-3 text-center">${kk.selesai}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2">
+                        <div class="w-32 bg-gray-200 rounded-full h-2">
+                          <div class="h-2 rounded-full ${
+                            kk.progress >= 75 ? 'bg-green-500' :
+                            kk.progress >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                          }" style="width: ${kk.progress}%"></div>
+                        </div>
+                        <span class="text-xs text-gray-600">${kk.progress}%</span>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <a href="checklist.html?kk=${kk.kode_kk}&unit=${unit}&periode=${periode}"
+                         class="text-blue-600 hover:underline text-xs">Lihat</a>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Render charts
+      if (chartStatus) chartStatus.destroy();
+      if (chartKK) chartKK.destroy();
+
+      chartStatus = new Chart(document.getElementById('chartStatus'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Selesai', 'Verifikasi', 'Upload', 'Proses', 'Belum', 'Revisi'],
+          datasets: [{
+            data: [
+              data.status.Selesai, data.status.Verifikasi,
+              data.status.Upload, data.status.Proses,
+              data.status.Belum, data.status.Revisi
+            ],
+            backgroundColor: ['#16a34a', '#7c3aed', '#eab308', '#2563eb', '#9ca3af', '#dc2626']
+          }]
+        },
+        options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+      });
+
+      chartKK = new Chart(document.getElementById('chartKK'), {
+        type: 'bar',
+        data: {
+          labels: data.per_kk.map(k => 'KK ' + k.kode_kk),
+          datasets: [{
+            label: 'Progress (%)',
+            data: data.per_kk.map(k => k.progress),
+            backgroundColor: '#2563eb',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, max: 100 } }
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
