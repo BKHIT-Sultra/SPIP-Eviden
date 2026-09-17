@@ -2,38 +2,237 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Test Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — SPIP Eviden</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="assets/css/custom.css">
 </head>
-<body class="bg-gray-100 min-h-screen p-8">
-  <div class="max-w-4xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">Test Dashboard</h1>
-    <div id="status" class="bg-white p-4 rounded-lg">Memuat...</div>
-    <div id="userInfo" class="bg-white p-4 rounded-lg mt-4"></div>
-    <button onclick="AUTH.logout()" class="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg">
-      Logout
-    </button>
-  </div>
+<body>
 
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/layout.js"></script>
   <script>
-    const status = document.getElementById('status');
-    const userInfo = document.getElementById('userInfo');
+    // Cek login dulu
+    AUTH.requireLogin();
+    // Render layout (ini akan HAPUS class login-bg dari body)
+    LAYOUT.render('dashboard');
+  </script>
 
-    if (!AUTH.isLoggedIn()) {
-      status.textContent = '❌ Belum login, redirect ke index...';
-      setTimeout(() => window.location.href = 'index.html', 1000);
-    } else {
-      status.textContent = '✅ Login berhasil!';
-      const user = AUTH.getUser();
-      userInfo.innerHTML = `
-        <div><b>Username:</b> ${user.username}</div>
-        <div><b>Nama:</b> ${user.nama}</div>
-        <div><b>Role:</b> ${user.role}</div>
-        <div><b>Unit:</b> ${user.kode_unit}</div>
+  <script>
+    // Filter & load data
+    LAYOUT.content().innerHTML = `
+      <div class="card p-4 mb-6">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-[180px]">
+            <label class="block text-xs font-medium text-slate-500 mb-1.5">Unit Kerja</label>
+            <select id="filterUnit" class="input"></select>
+          </div>
+          <div class="flex-1 min-w-[180px]">
+            <label class="block text-xs font-medium text-slate-500 mb-1.5">Periode</label>
+            <select id="filterPeriode" class="input"></select>
+          </div>
+          <button onclick="loadDashboard()" class="btn btn-primary">Terapkan</button>
+        </div>
+      </div>
+      <div id="dashContent"></div>
+    `;
+
+    let chartStatus = null, chartKK = null;
+
+    async function init() {
+      try {
+        const [units, periodes] = await Promise.all([
+          API.getUnits(),
+          API.getPeriodes()
+        ]);
+
+        document.getElementById('filterUnit').innerHTML = units.map(u =>
+          `<option value="${u.kode_unit}">${APP.esc(u.nama_unit)}</option>`
+        ).join('');
+
+        document.getElementById('filterPeriode').innerHTML = periodes
+          .filter(p => p.status === 'aktif')
+          .map(p => `<option value="${p.periode}">${APP.esc(p.nama_periode)}</option>`)
+          .join('');
+
+        const user = AUTH.getUser();
+        if (user && user.kode_unit) {
+          document.getElementById('filterUnit').value = user.kode_unit;
+        }
+
+        loadDashboard();
+      } catch (err) {
+        LAYOUT.content().innerHTML = APP.errorBox(err.message);
+      }
+    }
+
+    async function loadDashboard() {
+      const unit = document.getElementById('filterUnit').value;
+      const periode = document.getElementById('filterPeriode').value;
+      const el = document.getElementById('dashContent');
+
+      el.innerHTML = APP.loadingBox('Memuat dashboard...');
+
+      try {
+        const data = await API.getDashboard(unit, periode);
+        render(data, unit, periode);
+      } catch (err) {
+        el.innerHTML = APP.errorBox(err.message);
+      }
+    }
+
+    function render(data, unit, periode) {
+      const el = document.getElementById('dashContent');
+
+      el.innerHTML = `
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          ${statCard('Total Parameter', data.total_parameter, 'Semua KK', 'from-blue-500 to-blue-600', '📊')}
+          ${statCard('Selesai', data.status.Selesai, `${data.progress}% dari total`, 'from-emerald-500 to-emerald-600', '✓')}
+          ${statCard('Proses', data.status.Upload + data.status.Proses, 'sedang berjalan', 'from-amber-500 to-amber-600', '⏳')}
+          ${statCard('Belum Mulai', data.status.Belum, 'perlu tindak lanjut', 'from-rose-500 to-rose-600', '⚠')}
+        </div>
+
+        <div class="card p-6 mb-6">
+          <div class="flex justify-between items-center mb-3">
+            <div>
+              <h2 class="font-bold text-slate-800">Progress Keseluruhan</h2>
+              <p class="text-xs text-slate-500 mt-0.5">${data.status.Selesai} dari ${data.total_parameter} parameter selesai</p>
+            </div>
+            <div class="text-3xl font-bold text-blue-700">${data.progress}%</div>
+          </div>
+          <div class="progress-bar mb-4"><div style="width: ${data.progress}%"></div></div>
+          <div class="flex flex-wrap gap-3 text-xs">
+            ${statusChip('Selesai', data.status.Selesai, 'bg-emerald-100 text-emerald-700')}
+            ${statusChip('Verifikasi', data.status.Verifikasi, 'bg-violet-100 text-violet-700')}
+            ${statusChip('Upload', data.status.Upload, 'bg-amber-100 text-amber-700')}
+            ${statusChip('Proses', data.status.Proses, 'bg-blue-100 text-blue-700')}
+            ${statusChip('Belum', data.status.Belum, 'bg-slate-100 text-slate-700')}
+            ${statusChip('Revisi', data.status.Revisi, 'bg-rose-100 text-rose-700')}
+          </div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6 mb-6">
+          <div class="card p-5">
+            <h2 class="font-bold text-slate-800 mb-3 text-sm">Distribusi Status</h2>
+            <canvas id="chartStatus" height="200"></canvas>
+          </div>
+          <div class="card p-5 lg:col-span-2">
+            <h2 class="font-bold text-slate-800 mb-3 text-sm">Progress per KK</h2>
+            <canvas id="chartKK" height="120"></canvas>
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-100">
+            <h2 class="font-bold text-slate-800">Rincian per Kelompok Kriteria</h2>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="table-modern">
+              <thead>
+                <tr>
+                  <th>Kode</th>
+                  <th class="text-center">Total</th>
+                  <th class="text-center">Selesai</th>
+                  <th>Progress</th>
+                  <th class="text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.per_kk.map(kk => `
+                  <tr>
+                    <td>
+                      <span class="inline-flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">${kk.kode_kk.split('.')[0]}</span>
+                        <span class="font-medium text-slate-700">KK ${kk.kode_kk}</span>
+                      </span>
+                    </td>
+                    <td class="text-center font-medium">${kk.total}</td>
+                    <td class="text-center font-medium text-emerald-600">${kk.selesai}</td>
+                    <td>
+                      <div class="flex items-center gap-3 max-w-xs">
+                        <div class="progress-bar flex-1">
+                          <div style="width: ${kk.progress}%"></div>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-600 w-10 text-right">${kk.progress}%</span>
+                      </div>
+                    </td>
+                    <td class="text-center">
+                      <a href="checklist.html?kk=${kk.kode_kk}&unit=${unit}&periode=${periode}" class="btn btn-ghost text-xs text-blue-700">Lihat →</a>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      if (chartStatus) chartStatus.destroy();
+      if (chartKK) chartKK.destroy();
+
+      chartStatus = new Chart(document.getElementById('chartStatus'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Selesai', 'Verifikasi', 'Upload', 'Proses', 'Belum', 'Revisi'],
+          datasets: [{
+            data: [data.status.Selesai, data.status.Verifikasi, data.status.Upload,
+                   data.status.Proses, data.status.Belum, data.status.Revisi],
+            backgroundColor: ['#10b981', '#8b5cf6', '#f59e0b', '#3b82f6', '#94a3b8', '#f43f5e'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          cutout: '72%',
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } } }
+        }
+      });
+
+      chartKK = new Chart(document.getElementById('chartKK'), {
+        type: 'bar',
+        data: {
+          labels: data.per_kk.map(k => 'KK ' + k.kode_kk),
+          datasets: [{
+            label: 'Progress',
+            data: data.per_kk.map(k => k.progress),
+            backgroundColor: '#2563eb',
+            borderRadius: 8
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function statCard(label, value, sub, gradient, icon) {
+      return `
+        <div class="card p-5">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-lg shadow-lg mb-3">
+            ${icon}
+          </div>
+          <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">${label}</div>
+          <div class="text-3xl font-bold text-slate-800 mt-1">${value}</div>
+          <div class="text-xs text-slate-400 mt-1">${sub}</div>
+        </div>
       `;
     }
+
+    function statusChip(label, val, cls) {
+      return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${cls} font-medium">
+        <span class="w-1.5 h-1.5 rounded-full bg-current opacity-60"></span>
+        ${label}: ${val}
+      </span>`;
+    }
+
+    init();
   </script>
 </body>
 </html>
