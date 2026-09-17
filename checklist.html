@@ -20,6 +20,106 @@
     LAYOUT.render('checklist');
   </script>
 
+  <!-- ============================================== -->
+  <!-- MODAL EVIDEN (Tambah / Edit / Upload)          -->
+  <!-- ============================================== -->
+  <div id="modalEviden" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full modal-content">
+
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 id="modalTitle" class="font-bold text-lg text-slate-800">Tambah Item Lampiran</h3>
+        <button onclick="closeModal()" class="btn btn-ghost p-1.5">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-6 space-y-4">
+
+        <!-- Info grade (readonly) -->
+        <div id="modalGradeInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700">
+          Menambahkan untuk <span id="modalGradeText" class="font-semibold">Grade A</span>
+        </div>
+
+        <!-- Nama dokumen -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Nama Item Lampiran <span class="text-rose-500">*</span>
+          </label>
+          <input type="text" id="modalNama" required
+                 class="input" placeholder="mis. Reakp Money disiplin pegawai"/>
+          <div class="text-xs text-slate-400 mt-1">
+            Isi dengan nama dokumen yang akan dilampirkan
+          </div>
+        </div>
+
+        <!-- Link dokumen (hanya tampil di mode upload/edit) -->
+        <div id="modalLinkGroup" class="hidden">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Link Google Drive / URL
+          </label>
+          <input type="url" id="modalLink"
+                 class="input" placeholder="https://drive.google.com/..."/>
+          <div class="text-xs text-slate-400 mt-1">
+            Kosongkan kalau dokumen belum diupload
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="closeModal()" class="btn btn-secondary text-sm">Batal</button>
+        <button id="modalSubmitBtn" onclick="submitModal()" class="btn btn-primary text-sm">
+          Simpan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL KONFIRMASI HAPUS                          -->
+  <!-- ============================================== -->
+  <div id="modalHapus" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 modal-content">
+
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="font-semibold text-slate-800">Hapus Item Lampiran?</div>
+          <div class="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan.</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm mb-4">
+        <div class="text-xs text-slate-500 mb-1">Nama dokumen:</div>
+        <div id="hapusNamaText" class="font-medium text-slate-800 break-words">-</div>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button onclick="closeModalHapus()" class="btn btn-secondary text-sm">Batal</button>
+        <button onclick="confirmHapus()" class="btn btn-danger text-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
+          </svg>
+          Ya, Hapus
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MAIN SCRIPT                                     -->
+  <!-- ============================================== -->
   <script>
     const params = new URLSearchParams(location.search);
     let kodeKK = params.get('kk') || '';
@@ -27,6 +127,19 @@
     let periode = params.get('periode');
 
     let allData = [];
+
+    // State modal
+    let modalState = {
+      mode: 'add', // 'add' | 'edit' | 'upload'
+      idTrans: null,
+      grade: null,
+      idEviden: null
+    };
+
+    let hapusState = {
+      idEviden: null,
+      nama: null
+    };
 
     // ==================== INIT ====================
 
@@ -36,10 +149,8 @@
       const user = AUTH.getUser();
       console.log('👤 User:', user);
 
-      // Unit: URL → user → fallback
-      if (!unit && user && user.kode_unit) {
-        unit = user.kode_unit;
-      }
+      if (!unit && user && user.kode_unit) unit = user.kode_unit;
+
       if (!unit) {
         try {
           const units = await API.getUnits();
@@ -53,14 +164,10 @@
       }
       console.log('📦 Unit:', unit);
 
-      // Periode: URL → periode aktif → fallback
       if (!periode) {
         try {
           const periodes = await API.getPeriodes();
-          let aktif = periodes.find(p => {
-            const s = String(p.status || '').toLowerCase().trim();
-            return s === 'aktif';
-          });
+          let aktif = periodes.find(p => String(p.status || '').toLowerCase().trim() === 'aktif');
           if (!aktif) {
             const sorted = periodes
               .map(p => ({ ...p, _t: parseInt(String(p.periode).match(/\d{4}/)?.[0] || 0) }))
@@ -88,8 +195,6 @@
       const el = LAYOUT.content();
       el.innerHTML = APP.loadingBox('Memuat checklist...');
 
-      console.log(`📡 API.getChecklist("${unit}", "${periode}", "${kodeKK}")`);
-
       try {
         allData = await API.getChecklist(unit, periode, kodeKK);
         console.log('✅ Data diterima:', allData.length, 'item');
@@ -116,7 +221,7 @@
             <div class="text-5xl mb-4">📭</div>
             <div class="text-lg font-semibold text-slate-800 mb-2">Tidak ada data checklist</div>
             <div class="text-sm text-slate-500 mb-4">
-              Filter: <b>${APP.esc(unit)}</b> · Periode: <b>${APP.esc(periode)}</b>${kodeKK ? ` · KK: <b>${APP.esc(kodeKK)}</b>` : ''}
+              Filter: <b>${APP.esc(unit)}</b> · Periode: <b>${APP.esc(periode)}</b>
             </div>
             <button onclick="loadChecklist()" class="btn btn-primary mt-4 text-sm">
               🔄 Coba Lagi
@@ -189,7 +294,6 @@
 
       el.innerHTML = headerHtml + filterHtml + `<div class="space-y-4">${groupsHtml}</div>`;
 
-      // Attach filter events
       document.getElementById('searchParam').addEventListener('input', filter);
       document.getElementById('filterStatus').addEventListener('change', filter);
       document.getElementById('filterGrade').addEventListener('change', filter);
@@ -215,31 +319,23 @@
       `;
     }
 
-    /**
-     * Render 1 item parameter (collapsible card)
-     * Setiap grade punya blok Uraian Hasil & Eviden sendiri
-     */
     function renderItem(item) {
       const t = item.trans;
       const allEviden = item.eviden || [];
       const selectedGrade = t.grade_dipilih;
 
-      // Badge sumber
       const sumberBadges = [];
       if (item.sumber.spip) sumberBadges.push('<span class="badge bg-emerald-100 text-emerald-700">SPIP</span>');
       if (item.sumber.mri) sumberBadges.push('<span class="badge badge-proses">MRI</span>');
       if (item.sumber.iepk) sumberBadges.push('<span class="badge bg-violet-100 text-violet-700">IEPK</span>');
 
-      // Total eviden keseluruhan
       const totalEviden = allEviden.length;
       const terupload = allEviden.filter(e => e.status === 'terupload').length;
 
-      // Render tiap grade
       const gradesHtml = item.grades.map(g => {
         const isSelected = selectedGrade && g.grade === selectedGrade;
         const gradeUpper = String(g.grade).toUpperCase();
 
-        // Filter eviden per grade
         const ev = allEviden.filter(e =>
           String(e.grade || '').toUpperCase() === gradeUpper
         );
@@ -254,7 +350,6 @@
 
         return `
           <div class="rounded-xl border ${cardClass} mb-3 overflow-hidden">
-            <!-- Header Grade -->
             <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-slate-50">
               <span class="${APP.gradeClass(g.grade)}">Grade ${g.grade}</span>
               <span class="text-xs text-slate-500">Cara: ${APP.esc(g.cara_pengujian)}</span>
@@ -263,7 +358,6 @@
             </div>
 
             <div class="p-4">
-              <!-- Grid Kriteria + Penjelasan -->
               <div class="grid md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <div class="text-xs font-semibold text-slate-500 uppercase mb-1.5">Kriteria</div>
@@ -275,13 +369,11 @@
                 </div>
               </div>
 
-              <!-- ============ URAIAN HASIL & EVIDEN ============ -->
               <div class="mt-4">
                 <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Uraian Hasil & Eviden</div>
 
                 <div class="border border-slate-200 rounded-xl bg-white overflow-hidden">
 
-                  <!-- Narasi pembuka -->
                   ${(isSelected && t.uraian_hasil) ? `
                     <div class="px-4 py-4 text-sm text-slate-700 leading-relaxed bg-slate-50/60 border-b border-slate-100">
                       ${APP.esc(t.uraian_hasil)}
@@ -292,16 +384,14 @@
                     </div>
                   ` : '')}
 
-                  <!-- Daftar item lampiran -->
                   ${ev.length > 0 ? `
                     <div class="divide-y divide-slate-100">
                       ${ev.map((e, idx) => renderEvidenRow(e, idx + 1)).join('')}
                     </div>
                   ` : ''}
 
-                  <!-- Tombol Tambah -->
                   <div class="p-3 bg-slate-50/50">
-                    <button onclick="tambahEviden('${item.id_trans}', '${g.grade}')"
+                    <button onclick="openModalTambah('${item.id_trans}', '${g.grade}')"
                             class="w-full text-xs text-slate-600 hover:text-blue-700 hover:bg-white border border-dashed border-slate-300 hover:border-blue-400 rounded-lg py-2.5 inline-flex items-center justify-center gap-1.5 transition font-medium">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -317,7 +407,6 @@
         `;
       }).join('');
 
-      // Info eviden di header
       const evidenCount = totalEviden > 0
         ? `${terupload}/${totalEviden} dokumen terupload`
         : '';
@@ -384,13 +473,14 @@
     }
 
     /**
-     * Render 1 baris eviden (numbered list style)
+     * Render baris eviden dengan tombol aksi:
+     * - Belum upload: 📤 Upload · ✏️ Edit · 🗑️ Hapus
+     * - Sudah upload: ↗ Buka · ✏️ Edit · 🗑️ Hapus
      */
     function renderEvidenRow(e, nomor) {
       const isUploaded = e.status === 'terupload';
       const isFile = e.jenis === 'file';
 
-      // Icon & warna
       const iconHtml = isUploaded
         ? (isFile
             ? `<div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
@@ -412,7 +502,6 @@
              </svg>
            </div>`;
 
-      // Subtitle
       let subtitle = '';
       if (isUploaded) {
         if (isFile) {
@@ -430,13 +519,9 @@
           ].filter(Boolean).join(' · ');
         }
       } else {
-        subtitle = [
-          e.tenggat ? `⏰ Tenggat: ${APP.formatDate(e.tenggat)}` : '',
-          e.pic ? `PIC: ${APP.esc(e.pic)}` : 'PIC: Belum ditentukan'
-        ].filter(Boolean).join(' · ');
+        subtitle = 'Belum ada dokumen — klik Upload untuk melampirkan';
       }
 
-      // Badge status
       const badge = isUploaded
         ? `<span class="badge badge-selesai">
              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -451,64 +536,51 @@
              Belum
            </span>`;
 
-      // Tombol aksi
-      const openBtn = e.link
-        ? `<a href="${APP.esc(e.link)}" target="_blank"
+      // ✅ Escape nama untuk onclick
+      const namaEsc = APP.esc(e.nama_dokumen).replace(/'/g, "\\'");
+      const linkEsc = APP.esc(e.link || '').replace(/'/g, "\\'");
+
+      // Tombol aksi: Buka (kalau ada link) atau Upload (kalau belum)
+      const actionBtn = isUploaded
+        ? `<a href="${APP.esc(e.link || '#')}" target="_blank"
               class="btn btn-ghost p-2 text-blue-700 hover:bg-blue-50"
-              title="Buka">
+              title="Buka dokumen">
              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
              </svg>
            </a>`
-        : '';
-
-      const uploadBtn = !isUploaded
-        ? `<button onclick="uploadEviden('${e.id_eviden}', '${APP.esc(e.nama_dokumen).replace(/'/g, "\\'")}')"
-                  class="btn btn-primary text-xs px-3 py-1.5">
+        : `<button onclick="openModalUpload('${e.id_eviden}', '${namaEsc}')"
+                   class="btn btn-primary text-xs px-3 py-1.5"
+                   title="Upload dokumen">
              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
              </svg>
              Upload
-           </button>`
-        : '';
+           </button>`;
 
       return `
         <div class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition">
-          <!-- Nomor -->
-          <div class="text-sm font-semibold text-slate-400 w-6 pt-2.5 shrink-0 text-right">
-            ${nomor}.
-          </div>
-
-          <!-- Ikon -->
+          <div class="text-sm font-semibold text-slate-400 w-6 pt-2.5 shrink-0 text-right">${nomor}.</div>
           ${iconHtml}
-
-          <!-- Konten -->
           <div class="flex-1 min-w-0 pt-0.5">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-sm font-medium text-slate-800 break-words">
-                ${APP.esc(e.nama_dokumen)}
-              </span>
+              <span class="text-sm font-medium text-slate-800 break-words">${APP.esc(e.nama_dokumen)}</span>
               ${badge}
             </div>
-            <div class="text-xs text-slate-400 mt-0.5 break-all">
-              ${APP.esc(subtitle)}
-            </div>
+            <div class="text-xs text-slate-400 mt-0.5 break-all">${APP.esc(subtitle)}</div>
           </div>
-
-          <!-- Aksi -->
           <div class="flex items-center gap-0.5 shrink-0 pt-1">
-            ${openBtn}
-            ${uploadBtn}
-            <button onclick="editEviden('${e.id_eviden}', '${APP.esc(e.nama_dokumen).replace(/'/g, "\\'")}', '${APP.esc(e.link || '').replace(/'/g, "\\'")}')"
+            ${actionBtn}
+            <button onclick="openModalEdit('${e.id_eviden}', '${namaEsc}', '${linkEsc}')"
                     class="btn btn-ghost p-2" title="Edit">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
               </svg>
             </button>
-            <button onclick="hapusEviden('${e.id_eviden}', '${APP.esc(e.nama_dokumen).replace(/'/g, "\\'")}')"
+            <button onclick="openModalHapus('${e.id_eviden}', '${namaEsc}')"
                     class="btn btn-ghost p-2 hover:!bg-rose-50 hover:!text-rose-600" title="Hapus">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -520,21 +592,15 @@
       `;
     }
 
-    // ==================== FORMAT HELPER ====================
-
     function formatPenjelasan(text) {
       if (!text) return '-';
       const lines = String(text).split('\n').filter(l => l.trim());
       if (lines.some(l => l.trim().startsWith('-') || l.trim().startsWith('•'))) {
-        const items = lines.map(l =>
-          `<li>${APP.esc(l.replace(/^[\s\-•]+/, ''))}</li>`
-        ).join('');
+        const items = lines.map(l => `<li>${APP.esc(l.replace(/^[\s\-•]+/, ''))}</li>`).join('');
         return `<ul class="list-disc pl-5 space-y-0.5">${items}</ul>`;
       }
       return APP.esc(text);
     }
-
-    // ==================== FILTER ====================
 
     function filter() {
       const q = document.getElementById('searchParam').value.toLowerCase();
@@ -551,11 +617,212 @@
       });
     }
 
-    // ==================== ACTIONS ====================
+    // ==================== MODAL: TAMBAH ====================
 
-    /**
-     * Ambil link folder Drive untuk parameter ini
-     */
+    function openModalTambah(idTrans, grade) {
+      modalState = {
+        mode: 'add',
+        idTrans: idTrans,
+        grade: grade,
+        idEviden: null
+      };
+
+      document.getElementById('modalTitle').textContent = 'Tambah Item Lampiran';
+      document.getElementById('modalGradeInfo').classList.remove('hidden');
+      document.getElementById('modalGradeText').textContent = `Grade ${grade}`;
+      document.getElementById('modalNama').value = '';
+      document.getElementById('modalNama').readOnly = false;
+      document.getElementById('modalLinkGroup').classList.add('hidden');
+      document.getElementById('modalLink').value = '';
+      document.getElementById('modalSubmitBtn').textContent = 'Simpan';
+
+      showModal('modalEviden');
+      setTimeout(() => document.getElementById('modalNama').focus(), 100);
+    }
+
+    // ==================== MODAL: UPLOAD ====================
+
+    function openModalUpload(idEviden, nama) {
+      modalState = {
+        mode: 'upload',
+        idTrans: null,
+        grade: null,
+        idEviden: idEviden
+      };
+
+      document.getElementById('modalTitle').textContent = 'Upload Dokumen';
+      document.getElementById('modalGradeInfo').classList.add('hidden');
+      document.getElementById('modalNama').value = nama;
+      document.getElementById('modalNama').readOnly = true;
+      document.getElementById('modalLinkGroup').classList.remove('hidden');
+      document.getElementById('modalLink').value = '';
+      document.getElementById('modalSubmitBtn').textContent = 'Upload';
+
+      showModal('modalEviden');
+      setTimeout(() => document.getElementById('modalLink').focus(), 100);
+    }
+
+    // ==================== MODAL: EDIT ====================
+
+    function openModalEdit(idEviden, nama, link) {
+      modalState = {
+        mode: 'edit',
+        idTrans: null,
+        grade: null,
+        idEviden: idEviden
+      };
+
+      document.getElementById('modalTitle').textContent = 'Edit Item Lampiran';
+      document.getElementById('modalGradeInfo').classList.add('hidden');
+      document.getElementById('modalNama').value = nama;
+      document.getElementById('modalNama').readOnly = false;
+      document.getElementById('modalLinkGroup').classList.remove('hidden');
+      document.getElementById('modalLink').value = link || '';
+      document.getElementById('modalSubmitBtn').textContent = 'Simpan Perubahan';
+
+      showModal('modalEviden');
+      setTimeout(() => document.getElementById('modalNama').focus(), 100);
+    }
+
+    // ==================== MODAL: SUBMIT ====================
+
+    async function submitModal() {
+      const nama = document.getElementById('modalNama').value.trim();
+      const link = document.getElementById('modalLink').value.trim();
+      const btn = document.getElementById('modalSubmitBtn');
+
+      // Validasi
+      if (!nama) {
+        alert('Nama dokumen wajib diisi');
+        document.getElementById('modalNama').focus();
+        return;
+      }
+
+      if (modalState.mode === 'upload' && !link) {
+        alert('Link dokumen wajib diisi untuk upload');
+        document.getElementById('modalLink').focus();
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      try {
+        if (modalState.mode === 'add') {
+          // Tambah baru — hanya nama, link kosong
+          await API.addEviden({
+            id_trans: modalState.idTrans,
+            grade: modalState.grade,
+            nama_dokumen: nama,
+            jenis: 'file',
+            link: ''
+          });
+        } else if (modalState.mode === 'upload') {
+          // Update link
+          await API.updateEviden({
+            id_eviden: modalState.idEviden,
+            link: link,
+            jenis: 'link'
+          });
+        } else if (modalState.mode === 'edit') {
+          // Edit nama + link
+          await API.updateEviden({
+            id_eviden: modalState.idEviden,
+            nama_dokumen: nama,
+            link: link,
+            jenis: link ? 'link' : 'file'
+          });
+        }
+
+        closeModal();
+        loadChecklist();
+      } catch (err) {
+        alert('Gagal: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Simpan';
+      }
+    }
+
+    // ==================== MODAL: HAPUS ====================
+
+    function openModalHapus(idEviden, nama) {
+      hapusState = { idEviden: idEviden, nama: nama };
+      document.getElementById('hapusNamaText').textContent = nama;
+      showModal('modalHapus');
+    }
+
+    async function confirmHapus() {
+      if (!hapusState.idEviden) return;
+
+      try {
+        await API.deleteEviden({ id_eviden: hapusState.idEviden });
+        closeModalHapus();
+        loadChecklist();
+      } catch (err) {
+        alert('Gagal: ' + err.message);
+      }
+    }
+
+    function closeModalHapus() {
+      hideModal('modalHapus');
+      hapusState = { idEviden: null, nama: null };
+    }
+
+    // ==================== MODAL HELPERS ====================
+
+    function showModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function hideModal(id) {
+      document.getElementById(id).classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    function closeModal() {
+      hideModal('modalEviden');
+      modalState = { mode: 'add', idTrans: null, grade: null, idEviden: null };
+    }
+
+    // ESC untuk close
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!document.getElementById('modalEviden').classList.contains('hidden')) closeModal();
+        if (!document.getElementById('modalHapus').classList.contains('hidden')) closeModalHapus();
+      }
+    });
+
+    // Click overlay untuk close
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) {
+        if (e.target.id === 'modalEviden') closeModal();
+        if (e.target.id === 'modalHapus') closeModalHapus();
+      }
+    });
+
+    // Enter untuk submit
+    document.getElementById('modalNama').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (modalState.mode === 'upload') {
+          document.getElementById('modalLink').focus();
+        } else {
+          submitModal();
+        }
+      }
+    });
+
+    document.getElementById('modalLink').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitModal();
+      }
+    });
+
+    // ==================== ACTIONS LAIN ====================
+
     async function ambilLinkUpload(idTrans) {
       try {
         const result = await API.getUploadLink(idTrans);
@@ -565,9 +832,6 @@
       }
     }
 
-    /**
-     * Sinkron file dari folder Drive ke daftar eviden
-     */
     async function syncFolder(idTrans) {
       if (!confirm('Sync file dari folder Drive?')) return;
       try {
@@ -579,98 +843,14 @@
       }
     }
 
-    /**
-     * Tambah eviden baru untuk grade tertentu
-     */
-    async function tambahEviden(idTrans, grade) {
-      const nama = prompt(`Nama item lampiran untuk Grade ${grade}:`);
-      if (!nama) return;
-
-      const link = prompt('Link dokumen (opsional, kosongkan kalau belum upload):') || '';
-
-      try {
-        await API.addEviden({
-          id_trans: idTrans,
-          grade: grade,
-          nama_dokumen: nama,
-          jenis: link ? 'link' : 'file',
-          link: link
-        });
-        loadChecklist();
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
-    }
-
-    /**
-     * Update link (upload) untuk eviden yang sudah ada
-     */
-    async function uploadEviden(idEviden, nama) {
-      const link = prompt(`Upload untuk: ${nama}\n\nMasukkan link Google Drive / URL dokumen:`);
-      if (link === null) return;
-
-      try {
-        await API.updateEviden({
-          id_eviden: idEviden,
-          link: link
-        });
-        loadChecklist();
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
-    }
-
-    /**
-     * Edit nama & link eviden
-     */
-    async function editEviden(idEviden, namaLama, linkLama) {
-      const nama = prompt('Nama dokumen:', namaLama);
-      if (nama === null) return;
-
-      const link = prompt('Link:', linkLama);
-      if (link === null) return;
-
-      try {
-        await API.updateEviden({
-          id_eviden: idEviden,
-          nama_dokumen: nama,
-          link: link
-        });
-        loadChecklist();
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
-    }
-
-    /**
-     * Hapus eviden
-     */
-    async function hapusEviden(idEviden, nama) {
-      if (!confirm(`Hapus "${nama}"?`)) return;
-
-      try {
-        await API.deleteEviden({ id_eviden: idEviden });
-        loadChecklist();
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
-    }
-
-    /**
-     * Update status parameter
-     */
     async function updateStatus(idTrans, statusSekarang) {
       const status = prompt(
         'Status baru (Belum/Proses/Upload/Verifikasi/Selesai/Revisi):',
         statusSekarang
       );
       if (!status) return;
-
       try {
-        await API.saveStatus({
-          id_trans: idTrans,
-          status: status
-        });
+        await API.saveStatus({ id_trans: idTrans, status: status });
         loadChecklist();
       } catch (err) {
         alert('Gagal: ' + err.message);
