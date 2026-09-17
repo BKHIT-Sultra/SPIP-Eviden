@@ -3,231 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard — Checklist SPIP</title>
+  <title>Login — SPIP Eviden</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="assets/css/custom.css">
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="login-bg min-h-screen flex items-center justify-center p-4">
 
-  <div id="navbar"></div>
+  <div class="login-card w-full max-w-md bg-white/95 rounded-3xl shadow-2xl p-8 md:p-10 animate-fade-in">
 
-  <!-- FILTER BAR -->
-  <div class="bg-white border-b">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-3 items-center">
-      <div>
-        <label class="text-xs text-gray-500">Unit</label>
-        <select id="filterUnit" class="block border rounded-lg px-3 py-1.5 text-sm"></select>
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-500/30 mb-4">
+        <span class="text-3xl">📋</span>
       </div>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-800">SPIP Eviden</h1>
+      <p class="text-sm text-slate-500 mt-2">Sistem Pemantauan Eviden & Penilaian SPIP</p>
+    </div>
+
+    <!-- Form -->
+    <form id="loginForm" class="space-y-4">
+
       <div>
-        <label class="text-xs text-gray-500">Periode</label>
-        <select id="filterPeriode" class="block border rounded-lg px-3 py-1.5 text-sm"></select>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+        <div class="relative">
+          <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          <input type="text" id="username" required autofocus
+                 class="input pl-10" placeholder="Masukkan username"/>
+        </div>
       </div>
-      <button onclick="loadDashboard()" class="ml-auto bg-blue-700 hover:bg-blue-800 text-white text-sm px-4 py-2 rounded-lg">
-        Terapkan
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+        <div class="relative">
+          <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+          <input type="password" id="password" required
+                 class="input pl-10 pr-10" placeholder="••••••••"/>
+          <button type="button" onclick="togglePassword()"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="errorMsg" class="hidden bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl p-3">
+      </div>
+
+      <button type="submit" id="loginBtn" class="btn btn-primary w-full py-3 text-base">
+        <span id="btnText">Masuk</span>
       </button>
+    </form>
+
+    <div class="text-center text-xs text-slate-400 mt-6">
+      Lupa password? Hubungi admin untuk reset.
     </div>
   </div>
 
-  <main id="content" class="max-w-7xl mx-auto px-4 py-6"></main>
-
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>
-  <script src="assets/js/api.js"></script>
-  <script src="assets/js/app.js"></script>
   <script>
-    AUTH.requireLogin();
-    document.getElementById('navbar').innerHTML = APP.renderNavbar('dashboard');
+    if (AUTH.isLoggedIn()) window.location.href = 'dashboard.html';
 
-    let chartStatus = null;
-    let chartKK = null;
-
-    async function init() {
-      try {
-        // Load unit & periode
-        const [units, periodes] = await Promise.all([
-          API.getUnits(),
-          API.getPeriodes()
-        ]);
-
-        const selUnit = document.getElementById('filterUnit');
-        selUnit.innerHTML = units.map(u =>
-          `<option value="${u.kode_unit}">${APP.esc(u.nama_unit)}</option>`
-        ).join('');
-
-        const selPeriode = document.getElementById('filterPeriode');
-        selPeriode.innerHTML = periodes
-          .filter(p => p.status === 'aktif')
-          .map(p => `<option value="${p.periode}">${APP.esc(p.nama_periode)}</option>`)
-          .join('');
-
-        // Default: unit user
-        const user = AUTH.getUser();
-        if (user && user.kode_unit) selUnit.value = user.kode_unit;
-
-        loadDashboard();
-      } catch (err) {
-        APP.showError(document.getElementById('content'), err.message);
-      }
+    function togglePassword() {
+      const pwd = document.getElementById('password');
+      pwd.type = pwd.type === 'password' ? 'text' : 'password';
     }
 
-    async function loadDashboard() {
-      const unit = document.getElementById('filterUnit').value;
-      const periode = document.getElementById('filterPeriode').value;
-      const content = document.getElementById('content');
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
 
-      APP.showLoading(content);
+      const btn = document.getElementById('loginBtn');
+      const btnText = document.getElementById('btnText');
+      const errEl = document.getElementById('errorMsg');
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+      btnText.textContent = 'Memproses...';
 
       try {
-        const data = await API.getDashboard(unit, periode);
-        renderDashboard(data, unit, periode);
-      } catch (err) {
-        APP.showError(content, err.message);
-      }
-    }
+        const res = await fetch(CONFIG.API_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'login', username, password }),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const data = await res.json();
 
-    function renderDashboard(data, unit, periode) {
-      const content = document.getElementById('content');
-
-      content.innerHTML = `
-        <!-- STAT CARDS -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div class="bg-white rounded-xl shadow p-4">
-            <div class="text-xs text-gray-500 uppercase">Total Parameter</div>
-            <div class="text-2xl font-bold text-gray-800">${data.total_parameter}</div>
-            <div class="text-xs text-gray-400 mt-1">Semua KK</div>
-          </div>
-          <div class="bg-white rounded-xl shadow p-4">
-            <div class="text-xs text-gray-500 uppercase">Selesai</div>
-            <div class="text-2xl font-bold text-green-600">${data.status.Selesai}</div>
-            <div class="text-xs text-green-500 mt-1">${data.progress}%</div>
-          </div>
-          <div class="bg-white rounded-xl shadow p-4">
-            <div class="text-xs text-gray-500 uppercase">Proses / Upload</div>
-            <div class="text-2xl font-bold text-yellow-600">${data.status.Upload + data.status.Proses}</div>
-            <div class="text-xs text-yellow-500 mt-1">sedang berjalan</div>
-          </div>
-          <div class="bg-white rounded-xl shadow p-4">
-            <div class="text-xs text-gray-500 uppercase">Belum Mulai</div>
-            <div class="text-2xl font-bold text-red-600">${data.status.Belum}</div>
-            <div class="text-xs text-red-500 mt-1">perlu ditindak</div>
-          </div>
-        </div>
-
-        <!-- PROGRESS BAR -->
-        <div class="bg-white rounded-xl shadow p-5 mb-6">
-          <div class="flex justify-between items-center mb-2">
-            <h2 class="font-semibold text-gray-700">Progress Keseluruhan</h2>
-            <span class="text-sm font-bold text-blue-700">${data.progress}%</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-            <div class="bg-gradient-to-r from-blue-500 to-blue-700 h-3 rounded-full" style="width: ${data.progress}%"></div>
-          </div>
-          <div class="flex flex-wrap gap-4 mt-3 text-xs text-gray-500">
-            <span>✓ Selesai: ${data.status.Selesai}</span>
-            <span>🔍 Verifikasi: ${data.status.Verifikasi}</span>
-            <span>📤 Upload: ${data.status.Upload}</span>
-            <span>⏳ Proses: ${data.status.Proses}</span>
-            <span>⚪ Belum: ${data.status.Belum}</span>
-            <span>🔄 Revisi: ${data.status.Revisi}</span>
-          </div>
-        </div>
-
-        <!-- CHARTS -->
-        <div class="grid md:grid-cols-3 gap-6 mb-6">
-          <div class="bg-white rounded-xl shadow p-5 md:col-span-1">
-            <h2 class="font-semibold text-gray-700 mb-3">Status Eviden</h2>
-            <canvas id="chartStatus" height="200"></canvas>
-          </div>
-          <div class="bg-white rounded-xl shadow p-5 md:col-span-2">
-            <h2 class="font-semibold text-gray-700 mb-3">Progress per KK</h2>
-            <canvas id="chartKK" height="120"></canvas>
-          </div>
-        </div>
-
-        <!-- TABEL PER KK -->
-        <div class="bg-white rounded-xl shadow overflow-hidden">
-          <div class="px-5 py-4 border-b">
-            <h2 class="font-semibold text-gray-700">Rincian per Kelompok Kriteria (KK)</h2>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-              <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
-                <tr>
-                  <th class="px-4 py-3 text-left">Kode</th>
-                  <th class="px-4 py-3 text-center">Total</th>
-                  <th class="px-4 py-3 text-center">Selesai</th>
-                  <th class="px-4 py-3 text-left">Progress</th>
-                  <th class="px-4 py-3 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y">
-                ${data.per_kk.map(kk => `
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 font-mono text-blue-700">KK ${kk.kode_kk}</td>
-                    <td class="px-4 py-3 text-center">${kk.total}</td>
-                    <td class="px-4 py-3 text-center">${kk.selesai}</td>
-                    <td class="px-4 py-3">
-                      <div class="flex items-center gap-2">
-                        <div class="w-32 bg-gray-200 rounded-full h-2">
-                          <div class="h-2 rounded-full ${
-                            kk.progress >= 75 ? 'bg-green-500' :
-                            kk.progress >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                          }" style="width: ${kk.progress}%"></div>
-                        </div>
-                        <span class="text-xs text-gray-600">${kk.progress}%</span>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      <a href="checklist.html?kk=${kk.kode_kk}&unit=${unit}&periode=${periode}"
-                         class="text-blue-600 hover:underline text-xs">Lihat</a>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-
-      // Render charts
-      if (chartStatus) chartStatus.destroy();
-      if (chartKK) chartKK.destroy();
-
-      chartStatus = new Chart(document.getElementById('chartStatus'), {
-        type: 'doughnut',
-        data: {
-          labels: ['Selesai', 'Verifikasi', 'Upload', 'Proses', 'Belum', 'Revisi'],
-          datasets: [{
-            data: [
-              data.status.Selesai, data.status.Verifikasi,
-              data.status.Upload, data.status.Proses,
-              data.status.Belum, data.status.Revisi
-            ],
-            backgroundColor: ['#16a34a', '#7c3aed', '#eab308', '#2563eb', '#9ca3af', '#dc2626']
-          }]
-        },
-        options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
-      });
-
-      chartKK = new Chart(document.getElementById('chartKK'), {
-        type: 'bar',
-        data: {
-          labels: data.per_kk.map(k => 'KK ' + k.kode_kk),
-          datasets: [{
-            label: 'Progress (%)',
-            data: data.per_kk.map(k => k.progress),
-            backgroundColor: '#2563eb',
-            borderRadius: 6
-          }]
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, max: 100 } }
+        if (data.success) {
+          AUTH.saveUser(data.data.user, data.data.token, data.data.expires_at);
+          window.location.href = 'dashboard.html';
+        } else {
+          errEl.textContent = data.message || 'Login gagal';
+          errEl.classList.remove('hidden');
         }
-      });
-    }
-
-    init();
+      } catch (err) {
+        errEl.textContent = 'Error: ' + err.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = 'Masuk';
+      }
+    });
   </script>
 </body>
 </html>
