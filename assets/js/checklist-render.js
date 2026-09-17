@@ -1,0 +1,430 @@
+/**
+ * =============================================
+ * CHECKLIST RENDER — Semua function render UI
+ * =============================================
+ */
+
+// ============ RENDER MAIN ============
+function renderChecklist() {
+  const el = LAYOUT.content();
+
+  LAYOUT.setTitle(
+    kodeKK ? `KK ${kodeKK}` : 'Semua Checklist',
+    `${allData.length} parameter · ${unit} · ${periode}`
+  );
+
+  if (allData.length === 0) {
+    el.innerHTML = renderEmptyState();
+    return;
+  }
+
+  let headerHtml = '';
+  if (kodeKK) headerHtml = renderHeaderKK();
+
+  const filterHtml = renderFilterBar();
+
+  // Group per KK
+  const groups = {};
+  allData.forEach(d => {
+    if (!groups[d.kode_kk]) {
+      groups[d.kode_kk] = { kode_kk: d.kode_kk, subunsur: d.subunsur, items: [] };
+    }
+    groups[d.kode_kk].items.push(d);
+  });
+
+  const groupsHtml = Object.values(groups).map(g => renderGroup(g)).join('');
+
+  el.innerHTML = headerHtml + filterHtml + `<div class="space-y-4">${groupsHtml}</div>`;
+
+  document.getElementById('searchParam').addEventListener('input', filterChecklist);
+  document.getElementById('filterStatus').addEventListener('change', filterChecklist);
+  document.getElementById('filterGrade').addEventListener('change', filterChecklist);
+}
+
+// ============ EMPTY STATE ============
+function renderEmptyState() {
+  return `
+    <div class="card p-12 text-center">
+      <div class="text-5xl mb-4">📭</div>
+      <div class="text-lg font-semibold text-slate-800 mb-2">Tidak ada data checklist</div>
+      <div class="text-sm text-slate-500 mb-4">
+        Filter: <b>${APP.esc(unit)}</b> · Periode: <b>${APP.esc(periode)}</b>
+      </div>
+      <button onclick="loadChecklist()" class="btn btn-primary mt-4 text-sm">
+        🔄 Coba Lagi
+      </button>
+    </div>
+  `;
+}
+
+// ============ HEADER KK ============
+function renderHeaderKK() {
+  const total = allData.length;
+  const selesai = allData.filter(d => d.trans.status === 'Selesai').length;
+  const progress = total > 0 ? Math.round((selesai / total) * 100) : 0;
+
+  return `
+    <div class="card p-6 mb-6 border-l-4 border-blue-600 animate-fade-in">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span class="badge badge-proses mb-2">KK ${kodeKK}</span>
+          <h1 class="text-xl font-bold text-slate-800">${APP.esc(allData[0].subunsur)}</h1>
+          <p class="text-sm text-slate-500 mt-1">
+            Unit: <span class="font-medium text-slate-700">${APP.esc(unit)}</span> ·
+            Periode: <span class="font-medium text-slate-700">${APP.esc(periode)}</span>
+          </p>
+        </div>
+        <div class="text-right">
+          <div class="text-4xl font-bold text-blue-700">${progress}%</div>
+          <div class="text-xs text-slate-500 mt-1">${selesai} dari ${total} selesai</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============ FILTER BAR ============
+function renderFilterBar() {
+  return `
+    <div class="card p-4 mb-6 animate-fade-in">
+      <div class="flex flex-wrap gap-3 items-center">
+        <div class="flex-1 min-w-[200px] relative">
+          <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text" id="searchParam" placeholder="Cari parameter..." class="input pl-10"/>
+        </div>
+        <select id="filterStatus" class="input max-w-[180px]">
+          <option value="">Semua Status</option>
+          <option>Belum</option><option>Proses</option><option>Upload</option>
+          <option>Verifikasi</option><option>Selesai</option><option>Revisi</option>
+        </select>
+        <select id="filterGrade" class="input max-w-[160px]">
+          <option value="">Semua Grade</option>
+          <option>A</option><option>B</option><option>C</option><option>D</option><option>E</option>
+        </select>
+      </div>
+    </div>
+  `;
+}
+
+// ============ GROUP ============
+function renderGroup(g) {
+  const total = g.items.length;
+  const selesai = g.items.filter(i => i.trans.status === 'Selesai').length;
+
+  return `
+    <div class="card overflow-hidden animate-fade-in">
+      <div class="px-5 py-4 bg-gradient-to-r from-blue-50 to-white border-b border-slate-100 flex items-center justify-between">
+        <h2 class="font-bold text-slate-800 flex items-center gap-2">
+          <span class="px-2 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-mono font-bold">${g.kode_kk}</span>
+          ${APP.esc(g.subunsur)}
+        </h2>
+        <span class="badge badge-proses">${selesai}/${total} selesai</span>
+      </div>
+      <div class="divide-y divide-slate-100">
+        ${g.items.map(i => renderItem(i)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ============ ITEM ============
+function renderItem(item) {
+  const t = item.trans;
+  const allEviden = item.eviden || [];
+  const selectedGrade = t.grade_dipilih;
+
+  const sumberBadges = [];
+  if (item.sumber.spip) sumberBadges.push('<span class="badge bg-emerald-100 text-emerald-700">SPIP</span>');
+  if (item.sumber.mri) sumberBadges.push('<span class="badge badge-proses">MRI</span>');
+  if (item.sumber.iepk) sumberBadges.push('<span class="badge bg-violet-100 text-violet-700">IEPK</span>');
+
+  const totalEviden = allEviden.length;
+  const terupload = allEviden.filter(e => e.status === 'terupload').length;
+
+  const gradesHtml = item.grades.map(g => renderGradeCard(g, item, allEviden, selectedGrade)).join('');
+
+  const evidenCount = totalEviden > 0
+    ? `${terupload}/${totalEviden} dokumen terupload`
+    : '';
+
+  return `
+    <details class="group" data-id="${item.id_trans}">
+      <summary class="p-4 hover:bg-slate-50 flex items-start gap-3 transition cursor-pointer">
+        <div class="pt-0.5 shrink-0">
+          <div class="w-6 h-6 rounded-full flex items-center justify-center ${
+            t.status === 'Selesai' ? 'bg-emerald-500' :
+            t.status === 'Upload'  ? 'bg-amber-500' :
+            t.status === 'Belum'   ? 'bg-slate-300' : 'bg-blue-500'
+          }">
+            ${t.status === 'Selesai' ? `
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+              </svg>` : ''}
+          </div>
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
+            <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">Param ${item.no_parameter}</span>
+            ${t.grade_dipilih ? `<span class="${APP.gradeClass(t.grade_dipilih)}">Grade ${t.grade_dipilih}</span>` : ''}
+            ${sumberBadges.join('')}
+            <span class="${APP.statusClass(t.status)}">${t.status}</span>
+          </div>
+          <div class="font-medium text-sm text-slate-800 leading-snug">${APP.esc(item.uraian_parameter)}</div>
+          ${evidenCount ? `
+            <div class="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+              </svg>
+              ${evidenCount}
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="pt-1 shrink-0 text-slate-400">
+          <svg class="w-5 h-5 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </summary>
+
+      <div class="px-5 pb-5 pt-3 bg-slate-50/50 border-t border-slate-100">
+        <div class="text-xs font-semibold text-slate-500 uppercase mb-3">Referensi Grade</div>
+        ${gradesHtml}
+
+        <div class="mt-5 flex flex-wrap gap-2 justify-end pt-4 border-t border-slate-200">
+          <button onclick="ambilLinkUpload('${item.id_trans}')" class="btn btn-secondary text-xs">
+            📁 Ambil Link Upload
+          </button>
+          <button onclick="syncFolder('${item.id_trans}')" class="btn btn-secondary text-xs">
+            🔄 Sync Folder
+          </button>
+          <button onclick="updateStatus('${item.id_trans}', '${t.status}')" class="btn btn-primary text-xs">
+            ⚙️ Update Status
+          </button>
+        </div>
+      </div>
+    </details>
+  `;
+}
+
+// ============ GRADE CARD ============
+function renderGradeCard(g, item, allEviden, selectedGrade) {
+  const isSelected = selectedGrade && g.grade === selectedGrade;
+  const gradeUpper = String(g.grade).toUpperCase();
+
+  const ev = allEviden.filter(e => {
+    const eGrade = String(e.grade || '').toUpperCase().trim();
+    const normalizedGrade = eGrade || 'A';
+    return normalizedGrade === gradeUpper;
+  });
+
+  const cardClass = isSelected
+    ? 'border-blue-400 bg-blue-50/40 ring-1 ring-blue-200'
+    : 'border-slate-100 bg-white';
+
+  const selectedBadge = isSelected
+    ? '<span class="badge bg-blue-100 text-blue-700 ml-1">✓ Dipilih</span>'
+    : '';
+
+  return `
+    <div class="rounded-xl border ${cardClass} mb-3 overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-slate-50">
+        <span class="${APP.gradeClass(g.grade)}">Grade ${g.grade}</span>
+        <span class="text-xs text-slate-500">Cara: ${APP.esc(g.cara_pengujian)}</span>
+        ${selectedBadge}
+        ${ev.length > 0 ? `<span class="badge bg-emerald-100 text-emerald-700">📎 ${ev.filter(e => e.status === 'terupload').length}/${ev.length}</span>` : ''}
+      </div>
+
+      <div class="p-4">
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <div class="text-xs font-semibold text-slate-500 uppercase mb-1.5">Kriteria</div>
+            <div class="text-sm text-slate-700 leading-relaxed">${APP.esc(g.kriteria)}</div>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-500 uppercase mb-1.5">Penjelasan</div>
+            <div class="text-sm text-slate-700 leading-relaxed">${formatPenjelasan(g.penjelasan)}</div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Uraian Hasil & Eviden</div>
+
+          <div class="border border-slate-200 rounded-xl bg-white overflow-hidden">
+
+            ${(isSelected && item.trans.uraian_hasil) ? `
+              <div class="px-4 py-4 text-sm text-slate-700 leading-relaxed bg-slate-50/60 border-b border-slate-100">
+                ${APP.esc(item.trans.uraian_hasil)}
+              </div>
+            ` : (isSelected ? `
+              <div class="px-4 py-3 text-xs text-slate-400 italic text-center bg-slate-50/60 border-b border-slate-100">
+                Belum ada uraian hasil — isi via tombol <b>⚙ Update Status</b>
+              </div>
+            ` : '')}
+
+            ${ev.length > 0 ? `
+              <div class="divide-y divide-slate-100">
+                ${ev.map((e, idx) => renderEvidenRow(e, idx + 1)).join('')}
+              </div>
+            ` : ''}
+
+            <div class="p-3 bg-slate-50/50">
+              <button onclick="openModalTambah('${item.id_trans}', '${g.grade}')"
+                      class="w-full text-xs text-slate-600 hover:text-blue-700 hover:bg-white border border-dashed border-slate-300 hover:border-blue-400 rounded-lg py-2.5 inline-flex items-center justify-center gap-1.5 transition font-medium">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Tambah Item Lampiran
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============ EVIDEN ROW ============
+function renderEvidenRow(e, nomor) {
+  const isUploaded = e.status === 'terupload';
+  const isFile = e.jenis === 'file';
+
+  const iconHtml = isUploaded
+    ? (isFile
+        ? `<div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                     d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+             </svg>
+           </div>`
+        : `<div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                     d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+             </svg>
+           </div>`)
+    : `<div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+         </svg>
+       </div>`;
+
+  let subtitle = '';
+  if (isUploaded) {
+    if (isFile) {
+      subtitle = [
+        e.file_name || '',
+        e.ukuran || '',
+        e.upload_by || '',
+        e.upload_at ? APP.formatDate(e.upload_at) : ''
+      ].filter(Boolean).join(' · ');
+    } else {
+      subtitle = [
+        e.link || '',
+        e.upload_by || '',
+        e.upload_at ? APP.formatDate(e.upload_at) : ''
+      ].filter(Boolean).join(' · ');
+    }
+  } else {
+    subtitle = 'Belum ada dokumen — klik Upload untuk melampirkan';
+  }
+
+  const badge = isUploaded
+    ? `<span class="badge badge-selesai">
+         <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+           <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+         </svg>
+         Terupload
+       </span>`
+    : `<span class="badge badge-revisi">
+         <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+           <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+         </svg>
+         Belum
+       </span>`;
+
+  const namaEsc = APP.esc(e.nama_dokumen).replace(/'/g, "\\'");
+  const linkEsc = APP.esc(e.link || '').replace(/'/g, "\\'");
+
+  const actionBtn = isUploaded
+    ? `<a href="${APP.esc(e.link || '#')}" target="_blank"
+          class="btn btn-ghost p-2 text-blue-700 hover:bg-blue-50"
+          title="Buka dokumen">
+         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                 d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+         </svg>
+       </a>`
+    : `<button onclick="openModalUpload('${e.id_eviden}', '${namaEsc}')"
+               class="btn btn-primary text-xs px-3 py-1.5"
+               title="Upload dokumen">
+         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+         </svg>
+         Upload
+       </button>`;
+
+  return `
+    <div class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition">
+      <div class="text-sm font-semibold text-slate-400 w-6 pt-2.5 shrink-0 text-right">${nomor}.</div>
+      ${iconHtml}
+      <div class="flex-1 min-w-0 pt-0.5">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-sm font-medium text-slate-800 break-words">${APP.esc(e.nama_dokumen)}</span>
+          ${badge}
+        </div>
+        <div class="text-xs text-slate-400 mt-0.5 break-all">${APP.esc(subtitle)}</div>
+      </div>
+      <div class="flex items-center gap-0.5 shrink-0 pt-1">
+        ${actionBtn}
+        <button onclick="openModalEdit('${e.id_eviden}', '${namaEsc}', '${linkEsc}')"
+                class="btn btn-ghost p-2" title="Edit">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+        </button>
+        <button onclick="openModalHapus('${e.id_eviden}', '${namaEsc}')"
+                class="btn btn-ghost p-2 hover:!bg-rose-50 hover:!text-rose-600" title="Hapus">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ============ FORMAT HELPER ============
+function formatPenjelasan(text) {
+  if (!text) return '-';
+  const lines = String(text).split('\n').filter(l => l.trim());
+  if (lines.some(l => l.trim().startsWith('-') || l.trim().startsWith('•'))) {
+    const items = lines.map(l => `<li>${APP.esc(l.replace(/^[\s\-•]+/, ''))}</li>`).join('');
+    return `<ul class="list-disc pl-5 space-y-0.5">${items}</ul>`;
+  }
+  return APP.esc(text);
+}
+
+// ============ FILTER ============
+function filterChecklist() {
+  const q = document.getElementById('searchParam').value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+  const grade = document.getElementById('filterGrade').value;
+
+  document.querySelectorAll('details[data-id]').forEach(el => {
+    const text = el.textContent.toLowerCase();
+    let show = true;
+    if (q && !text.includes(q)) show = false;
+    if (status && !el.textContent.includes(status)) show = false;
+    if (grade && !el.textContent.includes('Grade ' + grade)) show = false;
+    el.style.display = show ? '' : 'none';
+  });
+}
