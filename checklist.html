@@ -29,13 +29,63 @@
     let allData = [];
 
     async function init() {
+      console.log('🚀 INIT checklist');
+      
       const user = AUTH.getUser();
-      if (!unit) unit = user.kode_unit;
-      if (!periode) {
-        const periodes = await API.getPeriodes();
-        const aktif = periodes.find(p => p.status === 'aktif');
-        periode = aktif ? aktif.periode : '';
+      console.log('👤 User:', user);
+      
+      // Unit: dari URL → user → fallback
+      if (!unit && user && user.kode_unit) {
+        unit = user.kode_unit;
       }
+      console.log('📦 Unit:', unit);
+      
+      // Kalau user tidak punya kode_unit, pakai unit pertama
+      if (!unit) {
+        try {
+          const units = await API.getUnits();
+          const aktif = units.filter(u => u.aktif === true || String(u.aktif).toUpperCase() === 'TRUE');
+          unit = aktif[0]?.kode_unit || '';
+          console.log('📦 Unit fallback dari API:', unit);
+        } catch (e) {
+          console.error('Gagal ambil units:', e);
+        }
+      }
+
+      // Periode: dari URL → periode aktif → fallback
+      if (!periode) {
+        try {
+          const periodes = await API.getPeriodes();
+          console.log('📅 Periodes:', periodes);
+          
+          // Prioritas: status='aktif'
+          let aktif = periodes.find(p => {
+            const s = String(p.status || '').toLowerCase().trim();
+            return s === 'aktif';
+          });
+          
+          // Kalau tidak ada, ambil tahun terbaru
+          if (!aktif) {
+            const sorted = periodes
+              .map(p => ({ ...p, _t: parseInt(String(p.periode).match(/\d{4}/)?.[0] || 0) }))
+              .sort((a, b) => b._t - a._t);
+            aktif = sorted[0];
+          }
+          
+          periode = aktif ? String(aktif.periode) : '';
+          console.log('📅 Periode dipilih:', periode);
+        } catch (e) {
+          console.error('Gagal ambil periodes:', e);
+        }
+      }
+
+      if (!unit || !periode) {
+        LAYOUT.content().innerHTML = APP.errorBox(
+          `Unit atau periode tidak ditemukan.\nUnit: ${unit || '-'} · Periode: ${periode || '-'}`
+        );
+        return;
+      }
+
       loadChecklist();
     }
 
@@ -43,11 +93,50 @@
       const el = LAYOUT.content();
       el.innerHTML = APP.loadingBox('Memuat checklist...');
 
+      console.log(`📡 API.getChecklist("${unit}", "${periode}", "${kodeKK}")`);
+
       try {
         allData = await API.getChecklist(unit, periode, kodeKK);
+        console.log('✅ Data diterima:', allData.length, 'item');
+        
+        if (allData.length > 0) {
+          console.log('📋 Contoh item pertama:', allData[0]);
+        } else {
+          console.warn('⚠️ Data kosong. Cek: apakah Trans_Checklist sudah di-generate?');
+          // Debug: coba cek tanpa filter
+          debugEmptyResult();
+        }
+        
         render();
       } catch (err) {
+        console.error('❌ Error:', err);
         el.innerHTML = APP.errorBox(err.message);
+      }
+    }
+
+    /**
+     * Debug kalau data kosong — coba cek beberapa kombinasi
+     */
+    async function debugEmptyResult() {
+      try {
+        console.log('🔍 Debug: cek data tanpa filter...');
+        
+        // Coba tanpa kode_kk
+        const withoutKK = await API.getChecklist(unit, periode, '');
+        console.log(`   → tanpa kk: ${withoutKK.length} item`);
+        
+        // Coba periode lain
+        const periodes = await API.getPeriodes();
+        for (const p of periodes) {
+          try {
+            const result = await API.getChecklist(unit, String(p.periode), '');
+            console.log(`   → unit=${unit}, periode=${p.periode}: ${result.length} item`);
+          } catch (e) {
+            console.log(`   → unit=${unit}, periode=${p.periode}: error`);
+          }
+        }
+      } catch (e) {
+        console.error('Debug gagal:', e);
       }
     }
 
@@ -60,7 +149,26 @@
       );
 
       if (allData.length === 0) {
-        el.innerHTML = `<div class="card p-12 text-center text-slate-500">Tidak ada data checklist.</div>`;
+        el.innerHTML = `
+          <div class="card p-12 text-center">
+            <div class="text-5xl mb-4">📭</div>
+            <div class="text-lg font-semibold text-slate-800 mb-2">Tidak ada data checklist</div>
+            <div class="text-sm text-slate-500 mb-4">
+              Filter: <b>${APP.esc(unit)}</b> · Periode: <b>${APP.esc(periode)}</b>${kodeKK ? ` · KK: <b>${APP.esc(kodeKK)}</b>` : ''}
+            </div>
+            <div class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+              Kemungkinan penyebab:<br>
+              1. Sheet <b>Trans_Checklist</b> belum di-generate<br>
+              2. Unit / periode tidak cocok dengan data di sheet<br>
+              3. Backend belum di-deploy ulang<br>
+              <br>
+              Buka <b>Console (F12)</b> untuk lihat detail debug.
+            </div>
+            <button onclick="loadChecklist()" class="btn btn-primary mt-4 text-sm">
+              🔄 Coba Lagi
+            </button>
+          </div>
+        `;
         return;
       }
 
@@ -332,7 +440,7 @@
       });
     }
 
-    // Actions (sama seperti sebelumnya)
+    // Actions
     async function ambilLinkUpload(idTrans) {
       try {
         const result = await API.getUploadLink(idTrans);
