@@ -3,56 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Checklist — SPIP</title>
+  <title>Checklist — SPIP Eviden</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    details > summary { list-style: none; cursor: pointer; }
-    details > summary::-webkit-details-marker { display: none; }
-    details[open] .chevron { transform: rotate(90deg); }
-    .chevron { transition: transform .2s; }
-    .penjelasan ul { list-style: disc; padding-left: 1.25rem; }
-    .penjelasan ul li { margin-top: 2px; }
-  </style>
+  <link rel="stylesheet" href="assets/css/custom.css">
 </head>
-<body class="bg-gray-100 min-h-screen">
-
-  <div id="navbar"></div>
-
-  <main class="max-w-7xl mx-auto px-4 py-6">
-
-    <div class="text-sm text-gray-500 mb-4">
-      <a href="dashboard.html" class="hover:underline">Dashboard</a>
-      <span class="mx-1">/</span>
-      <span id="breadcrumb" class="text-gray-700 font-medium">Checklist</span>
-    </div>
-
-    <div id="headerKK" class="mb-5"></div>
-
-    <div class="bg-white rounded-lg shadow p-3 mb-5 flex flex-wrap gap-3 items-center">
-      <input type="text" id="searchParam" placeholder="Cari parameter..."
-             class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]"/>
-      <select id="filterStatus" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Semua Status</option>
-        <option>Belum</option><option>Proses</option><option>Upload</option>
-        <option>Verifikasi</option><option>Selesai</option><option>Revisi</option>
-      </select>
-      <select id="filterGrade" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Semua Grade</option>
-        <option>A</option><option>B</option><option>C</option><option>D</option><option>E</option>
-      </select>
-    </div>
-
-    <div id="content"></div>
-  </main>
+<body>
 
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/app.js"></script>
+  <script src="assets/js/layout.js"></script>
+
   <script>
     AUTH.requireLogin();
-    document.getElementById('navbar').innerHTML = APP.renderNavbar('checklist');
+    LAYOUT.render('checklist');
+  </script>
 
+  <script>
     const params = new URLSearchParams(location.search);
     let kodeKK = params.get('kk') || '';
     let unit = params.get('unit');
@@ -61,7 +29,6 @@
     let allData = [];
 
     async function init() {
-      // Kalau tidak ada unit/periode di URL, ambil dari user
       const user = AUTH.getUser();
       if (!unit) unit = user.kode_unit;
       if (!periode) {
@@ -69,213 +36,225 @@
         const aktif = periodes.find(p => p.status === 'aktif');
         periode = aktif ? aktif.periode : '';
       }
-
       loadChecklist();
     }
 
     async function loadChecklist() {
-      const content = document.getElementById('content');
-      APP.showLoading(content);
+      const el = LAYOUT.content();
+      el.innerHTML = APP.loadingBox('Memuat checklist...');
 
       try {
         allData = await API.getChecklist(unit, periode, kodeKK);
-        renderHeader();
-        renderList(allData);
+        render();
       } catch (err) {
-        APP.showError(content, err.message);
+        el.innerHTML = APP.errorBox(err.message);
       }
     }
 
-    function renderHeader() {
-      const header = document.getElementById('headerKK');
-      if (!kodeKK || allData.length === 0) {
-        header.innerHTML = '';
-        document.getElementById('breadcrumb').textContent = 'Semua KK';
+    function render() {
+      const el = LAYOUT.content();
+
+      LAYOUT.setTitle(
+        kodeKK ? `KK ${kodeKK}` : 'Semua Checklist',
+        `${allData.length} parameter · ${unit} · ${periode}`
+      );
+
+      if (allData.length === 0) {
+        el.innerHTML = `<div class="card p-12 text-center text-slate-500">Tidak ada data checklist.</div>`;
         return;
       }
 
-      const first = allData[0];
-      const total = allData.length;
-      const selesai = allData.filter(d => d.trans.status === 'Selesai').length;
-      const progress = total > 0 ? Math.round((selesai / total) * 100) : 0;
+      // Header KK
+      let headerHtml = '';
+      if (kodeKK) {
+        const total = allData.length;
+        const selesai = allData.filter(d => d.trans.status === 'Selesai').length;
+        const progress = total > 0 ? Math.round((selesai / total) * 100) : 0;
 
-      document.getElementById('breadcrumb').textContent = `KK ${kodeKK} — ${first.subunsur}`;
+        headerHtml = `
+          <div class="card p-6 mb-6 border-l-4 border-blue-600 animate-fade-in">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <span class="badge badge-proses mb-2">KK ${kodeKK}</span>
+                <h1 class="text-xl font-bold text-slate-800">${APP.esc(allData[0].subunsur)}</h1>
+                <p class="text-sm text-slate-500 mt-1">Unit: <span class="font-medium text-slate-700">${APP.esc(unit)}</span> · Periode: <span class="font-medium text-slate-700">${APP.esc(periode)}</span></p>
+              </div>
+              <div class="text-right">
+                <div class="text-4xl font-bold text-blue-700">${progress}%</div>
+                <div class="text-xs text-slate-500 mt-1">${selesai} dari ${total} selesai</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
 
-      header.innerHTML = `
-        <div class="bg-white rounded-xl shadow p-5 border-l-4 border-blue-700">
-          <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <span class="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-mono rounded">KK ${kodeKK}</span>
-              <h1 class="text-xl font-bold mt-2">${APP.esc(first.subunsur)}</h1>
-              <p class="text-sm text-gray-500 mt-1">
-                Unit: <span class="font-medium">${APP.esc(unit)}</span> ·
-                Periode: <span class="font-medium">${APP.esc(periode)}</span>
-              </p>
+      // Filter
+      const filterHtml = `
+        <div class="card p-4 mb-6 animate-fade-in">
+          <div class="flex flex-wrap gap-3 items-center">
+            <div class="flex-1 min-w-[200px] relative">
+              <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              <input type="text" id="searchParam" placeholder="Cari parameter..." class="input pl-10"/>
             </div>
-            <div class="text-right">
-              <div class="text-3xl font-bold text-blue-700">${progress}%</div>
-              <div class="text-xs text-gray-500">${selesai} dari ${total} selesai</div>
-            </div>
+            <select id="filterStatus" class="input max-w-[180px]">
+              <option value="">Semua Status</option>
+              <option>Belum</option><option>Proses</option><option>Upload</option>
+              <option>Verifikasi</option><option>Selesai</option><option>Revisi</option>
+            </select>
+            <select id="filterGrade" class="input max-w-[160px]">
+              <option value="">Semua Grade</option>
+              <option>A</option><option>B</option><option>C</option><option>D</option><option>E</option>
+            </select>
           </div>
         </div>
       `;
-    }
 
-    function renderList(data) {
-      const content = document.getElementById('content');
-
-      if (data.length === 0) {
-        content.innerHTML = `
-          <div class="bg-white rounded-xl shadow p-12 text-center text-gray-500">
-            Tidak ada data checklist untuk filter ini.
-          </div>
-        `;
-        return;
-      }
-
-      // Group per subunsur
+      // Group per KK
       const groups = {};
-      data.forEach(d => {
+      allData.forEach(d => {
         if (!groups[d.kode_kk]) {
-          groups[d.kode_kk] = {
-            kode_kk: d.kode_kk,
-            subunsur: d.subunsur,
-            items: []
-          };
+          groups[d.kode_kk] = { kode_kk: d.kode_kk, subunsur: d.subunsur, items: [] };
         }
         groups[d.kode_kk].items.push(d);
       });
 
-      const html = Object.values(groups).map(g => {
-        const total = g.items.length;
-        const selesai = g.items.filter(i => i.trans.status === 'Selesai').length;
+      const groupsHtml = Object.values(groups).map(g => renderGroup(g)).join('');
 
-        const itemsHtml = g.items.map(item => renderItem(item)).join('');
+      el.innerHTML = headerHtml + filterHtml + `<div class="space-y-4">${groupsHtml}</div>`;
 
-        return `
-          <div class="bg-white rounded-xl shadow overflow-hidden mb-5">
-            <div class="px-5 py-3 bg-gray-50 border-b flex items-center justify-between">
-              <h2 class="font-semibold">
-                <span class="text-blue-700 font-mono mr-2">${g.kode_kk}</span>
-                ${APP.esc(g.subunsur)}
-              </h2>
-              <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                ${selesai}/${total} selesai
-              </span>
-            </div>
-            <div class="divide-y">
-              ${itemsHtml}
-            </div>
+      // Events
+      document.getElementById('searchParam').addEventListener('input', filter);
+      document.getElementById('filterStatus').addEventListener('change', filter);
+      document.getElementById('filterGrade').addEventListener('change', filter);
+    }
+
+    function renderGroup(g) {
+      const total = g.items.length;
+      const selesai = g.items.filter(i => i.trans.status === 'Selesai').length;
+
+      return `
+        <div class="card overflow-hidden animate-fade-in">
+          <div class="px-5 py-4 bg-gradient-to-r from-blue-50 to-white border-b border-slate-100 flex items-center justify-between">
+            <h2 class="font-bold text-slate-800 flex items-center gap-2">
+              <span class="px-2 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-mono font-bold">${g.kode_kk}</span>
+              ${APP.esc(g.subunsur)}
+            </h2>
+            <span class="badge badge-proses">${selesai}/${total} selesai</span>
           </div>
-        `;
-      }).join('');
-
-      content.innerHTML = html;
-      attachEvents();
+          <div class="divide-y divide-slate-100">
+            ${g.items.map(i => renderItem(i)).join('')}
+          </div>
+        </div>
+      `;
     }
 
     function renderItem(item) {
       const t = item.trans;
       const ev = item.eviden || [];
 
-      const statusClass = APP.statusClass(t.status);
-
       const sumberBadges = [];
-      if (item.sumber.spip) sumberBadges.push('<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">SPIP</span>');
-      if (item.sumber.mri) sumberBadges.push('<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">MRI</span>');
-      if (item.sumber.iepk) sumberBadges.push('<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">IEPK</span>');
+      if (item.sumber.spip) sumberBadges.push('<span class="badge bg-emerald-100 text-emerald-700">SPIP</span>');
+      if (item.sumber.mri) sumberBadges.push('<span class="badge badge-proses">MRI</span>');
+      if (item.sumber.iepk) sumberBadges.push('<span class="badge bg-violet-100 text-violet-700">IEPK</span>');
 
-      // Detail panel dengan grade A-E
       const gradesHtml = item.grades.map(g => `
-        <div class="border rounded-lg p-3 mb-2 bg-white">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="text-xs px-2 py-0.5 rounded border font-semibold ${APP.gradeClass(g.grade)}">
-              Grade ${g.grade}
-            </span>
-            <span class="text-xs text-gray-500">Cara pengujian: ${APP.esc(g.cara_pengujian)}</span>
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 mb-2">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="${APP.gradeClass(g.grade)}">Grade ${g.grade}</span>
+            <span class="text-xs text-slate-500">Cara: ${APP.esc(g.cara_pengujian)}</span>
           </div>
-          <div class="text-xs font-semibold text-gray-500 uppercase mb-1">Kriteria</div>
-          <div class="text-sm mb-2">${APP.esc(g.kriteria)}</div>
-          <div class="text-xs font-semibold text-gray-500 uppercase mb-1">Penjelasan</div>
-          <div class="text-sm penjelasan">${formatPenjelasan(g.penjelasan)}</div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <div class="text-xs font-semibold text-slate-500 uppercase mb-1.5">Kriteria</div>
+              <div class="text-sm text-slate-700 leading-relaxed">${APP.esc(g.kriteria)}</div>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-slate-500 uppercase mb-1.5">Penjelasan</div>
+              <div class="text-sm text-slate-700 leading-relaxed">${formatPenjelasan(g.penjelasan)}</div>
+            </div>
+          </div>
         </div>
       `).join('');
 
-      // Eviden list
       const evidenHtml = ev.length > 0
         ? ev.map(e => renderEviden(e)).join('')
-        : '<div class="text-xs text-gray-400 italic">Belum ada dokumen pendukung</div>';
+        : '<div class="text-xs text-slate-400 italic py-3 text-center">Belum ada dokumen pendukung</div>';
 
       return `
         <details class="group" data-id="${item.id_trans}">
-          <summary class="p-4 hover:bg-gray-50 flex items-start gap-4">
-            <div class="pt-1 shrink-0">
-              <div class="w-6 h-6 rounded-full ${
-                t.status === 'Selesai' ? 'bg-green-500' :
-                t.status === 'Upload' ? 'bg-yellow-500' :
-                t.status === 'Belum' ? 'bg-gray-300' : 'bg-blue-500'
-              } flex items-center justify-center">
+          <summary class="p-4 hover:bg-slate-50 flex items-start gap-3 transition">
+            <div class="pt-0.5 shrink-0">
+              <div class="w-6 h-6 rounded-full flex items-center justify-center ${
+                t.status === 'Selesai' ? 'bg-emerald-500' :
+                t.status === 'Upload'  ? 'bg-amber-500' :
+                t.status === 'Belum'   ? 'bg-slate-300' : 'bg-blue-500'
+              }">
                 ${t.status === 'Selesai' ? `
                   <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                  </svg>
-                ` : ''}
+                  </svg>` : ''}
               </div>
             </div>
 
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap mb-1">
-                <span class="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                  Param ${item.no_parameter}
-                </span>
-                ${t.grade_dipilih ? `<span class="text-xs px-2 py-0.5 rounded border font-semibold ${APP.gradeClass(t.grade_dipilih)}">Grade ${t.grade_dipilih}</span>` : ''}
+              <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
+                <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">Param ${item.no_parameter}</span>
+                ${t.grade_dipilih ? `<span class="${APP.gradeClass(t.grade_dipilih)}">Grade ${t.grade_dipilih}</span>` : ''}
                 ${sumberBadges.join('')}
-                <span class="text-xs px-2 py-0.5 rounded border font-medium ${statusClass}">${t.status}</span>
+                <span class="${APP.statusClass(t.status)}">${t.status}</span>
               </div>
-              <div class="font-medium text-sm">${APP.esc(item.uraian_parameter)}</div>
+              <div class="font-medium text-sm text-slate-800 leading-snug">${APP.esc(item.uraian_parameter)}</div>
               ${ev.length > 0 ? `
-                <div class="text-xs text-gray-500 mt-1">
-                  📎 ${ev.length} dokumen · ${ev.filter(e => e.status === 'terupload').length} terupload
+                <div class="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                  </svg>
+                  ${ev.filter(e => e.status === 'terupload').length}/${ev.length} dokumen terupload
                 </div>
               ` : ''}
             </div>
 
-            <div class="pt-2 shrink-0 text-gray-400">
+            <div class="pt-1 shrink-0 text-slate-400">
               <svg class="w-5 h-5 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
             </div>
           </summary>
 
-          <div class="px-5 pb-5 pt-1 bg-gray-50 border-t">
-            <div class="text-xs font-semibold text-gray-500 uppercase mb-2 mt-3">Referensi Grade</div>
+          <div class="px-5 pb-5 pt-2 bg-slate-50/50 border-t border-slate-100">
+            <div class="text-xs font-semibold text-slate-500 uppercase mt-3 mb-3">Referensi Grade</div>
             ${gradesHtml}
 
-            <div class="mt-4 mb-2">
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-xs font-semibold text-gray-500 uppercase">Uraian Hasil Pengujian</div>
-                <button onclick="tambahEviden('${item.id_trans}')"
-                        class="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg">
-                  + Tambah Dokumen
+            <div class="mt-5">
+              <div class="flex items-center justify-between mb-3">
+                <div class="text-xs font-semibold text-slate-500 uppercase">Uraian Hasil Pengujian</div>
+                <button onclick="tambahEviden('${item.id_trans}')" class="btn btn-primary text-xs">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                  </svg>
+                  Tambah Dokumen
                 </button>
               </div>
+
               ${t.uraian_hasil ? `
-                <div class="bg-white border rounded-lg p-3 text-sm mb-3">${APP.esc(t.uraian_hasil)}</div>
+                <div class="p-4 rounded-xl bg-white border border-slate-200 text-sm text-slate-700 mb-3 leading-relaxed">
+                  ${APP.esc(t.uraian_hasil)}
+                </div>
               ` : ''}
+
               <div class="space-y-2">${evidenHtml}</div>
             </div>
 
-            <div class="mt-4 flex flex-wrap gap-2 justify-end border-t pt-4">
-              <button onclick="ambilLinkUpload('${item.id_trans}')"
-                      class="text-xs border border-gray-300 hover:bg-white text-gray-700 px-3 py-2 rounded-lg">
+            <div class="mt-5 flex flex-wrap gap-2 justify-end pt-4 border-t border-slate-200">
+              <button onclick="ambilLinkUpload('${item.id_trans}')" class="btn btn-secondary text-xs">
                 📁 Ambil Link Upload
               </button>
-              <button onclick="syncFolder('${item.id_trans}')"
-                      class="text-xs border border-gray-300 hover:bg-white text-gray-700 px-3 py-2 rounded-lg">
+              <button onclick="syncFolder('${item.id_trans}')" class="btn btn-secondary text-xs">
                 🔄 Sync Folder
               </button>
-              <button onclick="updateStatus('${item.id_trans}', '${t.status}')"
-                      class="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-2 rounded-lg">
+              <button onclick="updateStatus('${item.id_trans}', '${t.status}')" class="btn btn-primary text-xs">
                 ⚙️ Update Status
               </button>
             </div>
@@ -288,27 +267,41 @@
       const isUploaded = e.status === 'terupload';
       const icon = e.jenis === 'file' ? '📄' : '🔗';
       const badge = isUploaded
-        ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓ Terupload</span>'
-        : '<span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">⚠ Belum</span>';
+        ? '<span class="badge badge-selesai">✓ Terupload</span>'
+        : '<span class="badge badge-revisi">⚠ Belum</span>';
 
       return `
-        <div class="flex items-center gap-3 bg-white border rounded-lg p-3">
-          <div class="text-2xl shrink-0">${icon}</div>
+        <div class="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-3 hover:shadow-sm transition">
+          <div class="w-10 h-10 rounded-xl ${e.jenis === 'file' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center text-lg shrink-0">
+            ${icon}
+          </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-sm font-medium truncate">${APP.esc(e.nama_dokumen)}</span>
+              <span class="text-sm font-medium text-slate-800 truncate">${APP.esc(e.nama_dokumen)}</span>
               ${badge}
             </div>
-            <div class="text-xs text-gray-400 truncate">
-              ${e.upload_by ? `oleh ${APP.esc(e.upload_by)} · ${APP.formatDate(e.upload_at)}` : 'Belum diunggah'}
+            <div class="text-xs text-slate-400 truncate mt-0.5">
+              ${e.upload_by ? `${APP.esc(e.upload_by)} · ${APP.formatDate(e.upload_at)}` : 'Belum diunggah'}
             </div>
           </div>
-          <div class="flex items-center gap-1 shrink-0">
-            ${e.link ? `<a href="${APP.esc(e.link)}" target="_blank" class="text-xs text-blue-700 hover:bg-blue-50 px-2 py-1.5 rounded">Buka</a>` : ''}
+          <div class="flex items-center gap-0.5 shrink-0">
+            ${e.link ? `<a href="${APP.esc(e.link)}" target="_blank" class="btn btn-ghost p-2 text-blue-700" title="Buka">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+              </svg>
+            </a>` : ''}
             <button onclick="editEviden('${e.id_eviden}', '${APP.esc(e.nama_dokumen)}', '${APP.esc(e.link || '')}')"
-                    class="text-xs text-gray-600 hover:bg-gray-100 px-2 py-1.5 rounded">Edit</button>
+                    class="btn btn-ghost p-2" title="Edit">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
             <button onclick="hapusEviden('${e.id_eviden}', '${APP.esc(e.nama_dokumen)}')"
-                    class="text-xs text-red-600 hover:bg-red-50 px-2 py-1.5 rounded">Hapus</button>
+                    class="btn btn-ghost p-2 hover:!bg-rose-50 hover:!text-rose-600" title="Hapus">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
+              </svg>
+            </button>
           </div>
         </div>
       `;
@@ -316,22 +309,15 @@
 
     function formatPenjelasan(text) {
       if (!text) return '-';
-      // Kalau ada "- " di awal baris, ubah jadi <ul><li>
       const lines = String(text).split('\n').filter(l => l.trim());
       if (lines.some(l => l.trim().startsWith('-') || l.trim().startsWith('•'))) {
         const items = lines.map(l => `<li>${APP.esc(l.replace(/^[\s\-•]+/, ''))}</li>`).join('');
-        return `<ul>${items}</ul>`;
+        return `<ul class="list-disc pl-5 space-y-0.5">${items}</ul>`;
       }
       return APP.esc(text);
     }
 
-    function attachEvents() {
-      document.getElementById('searchParam').addEventListener('input', filterList);
-      document.getElementById('filterStatus').addEventListener('change', filterList);
-      document.getElementById('filterGrade').addEventListener('change', filterList);
-    }
-
-    function filterList() {
+    function filter() {
       const q = document.getElementById('searchParam').value.toLowerCase();
       const status = document.getElementById('filterStatus').value;
       const grade = document.getElementById('filterGrade').value;
@@ -346,45 +332,31 @@
       });
     }
 
-    // ===== ACTIONS =====
-
+    // Actions (sama seperti sebelumnya)
     async function ambilLinkUpload(idTrans) {
       try {
         const result = await API.getUploadLink(idTrans);
         window.open(result.folder_url, '_blank');
-        alert('Folder siap. URL sudah dibuka di tab baru.\n\n' + result.folder_url);
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
+      } catch (err) { alert('Gagal: ' + err.message); }
     }
 
     async function syncFolder(idTrans) {
-      if (!confirm('Sync file dari folder Drive ke daftar eviden?')) return;
+      if (!confirm('Sync file dari folder Drive?')) return;
       try {
-        const result = await API.syncFolder({ id_trans: idTrans });
-        alert(`Selesai. ${result.added} file baru, ${result.skipped} dilewati.`);
+        const r = await API.syncFolder({ id_trans: idTrans });
+        alert(`Selesai. ${r.added} file baru, ${r.skipped} dilewati.`);
         loadChecklist();
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
+      } catch (err) { alert('Gagal: ' + err.message); }
     }
 
     async function tambahEviden(idTrans) {
       const nama = prompt('Nama dokumen:');
       if (!nama) return;
-      const link = prompt('Link (opsional, kosongkan kalau belum upload):') || '';
-
+      const link = prompt('Link (opsional):') || '';
       try {
-        await API.addEviden({
-          id_trans: idTrans,
-          nama_dokumen: nama,
-          jenis: link ? 'link' : 'file',
-          link: link
-        });
+        await API.addEviden({ id_trans: idTrans, nama_dokumen: nama, jenis: link ? 'link' : 'file', link });
         loadChecklist();
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
+      } catch (err) { alert('Gagal: ' + err.message); }
     }
 
     async function editEviden(idEviden, namaLama, linkLama) {
@@ -392,45 +364,27 @@
       if (nama === null) return;
       const link = prompt('Link:', linkLama);
       if (link === null) return;
-
       try {
-        await API.updateEviden({
-          id_eviden: idEviden,
-          nama_dokumen: nama,
-          link: link
-        });
+        await API.updateEviden({ id_eviden: idEviden, nama_dokumen: nama, link });
         loadChecklist();
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
+      } catch (err) { alert('Gagal: ' + err.message); }
     }
 
     async function hapusEviden(idEviden, nama) {
-      if (!confirm(`Hapus dokumen "${nama}"?`)) return;
+      if (!confirm(`Hapus "${nama}"?`)) return;
       try {
         await API.deleteEviden({ id_eviden: idEviden });
         loadChecklist();
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
+      } catch (err) { alert('Gagal: ' + err.message); }
     }
 
     async function updateStatus(idTrans, statusSekarang) {
-      const status = prompt(
-        'Status baru (Belum/Proses/Upload/Verifikasi/Selesai/Revisi):',
-        statusSekarang
-      );
+      const status = prompt('Status baru (Belum/Proses/Upload/Verifikasi/Selesai/Revisi):', statusSekarang);
       if (!status) return;
-
       try {
-        await API.saveStatus({
-          id_trans: idTrans,
-          status: status
-        });
+        await API.saveStatus({ id_trans: idTrans, status });
         loadChecklist();
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
+      } catch (err) { alert('Gagal: ' + err.message); }
     }
 
     init();
