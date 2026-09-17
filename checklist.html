@@ -336,9 +336,14 @@
         const isSelected = selectedGrade && g.grade === selectedGrade;
         const gradeUpper = String(g.grade).toUpperCase();
 
-        const ev = allEviden.filter(e =>
-          String(e.grade || '').toUpperCase() === gradeUpper
-        );
+        const ev = allEviden.filter(e => {
+          const eGrade = String(e.grade || '').toUpperCase().trim();
+          
+          // ✅ Fallback: eviden tanpa grade dianggap milik grade A
+          const normalizedGrade = eGrade || 'A';
+          
+          return normalizedGrade === gradeUpper;
+        });
 
         const cardClass = isSelected
           ? 'border-blue-400 bg-blue-50/40 ring-1 ring-blue-200'
