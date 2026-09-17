@@ -15,17 +15,19 @@
   <script src="assets/js/api.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/layout.js"></script>
+
   <script>
-    // Cek login dulu
     AUTH.requireLogin();
-    // Render layout (ini akan HAPUS class login-bg dari body)
     LAYOUT.render('dashboard');
   </script>
 
+  <!-- ============================================== -->
+  <!-- FILTER + KONTEN                                 -->
+  <!-- ============================================== -->
   <script>
-    // Filter & load data
+    // Render filter bar
     LAYOUT.content().innerHTML = `
-      <div class="card p-4 mb-6">
+      <div class="card p-4 mb-6 animate-fade-in">
         <div class="flex flex-wrap gap-3 items-end">
           <div class="flex-1 min-w-[180px]">
             <label class="block text-xs font-medium text-slate-500 mb-1.5">Unit Kerja</label>
@@ -35,7 +37,13 @@
             <label class="block text-xs font-medium text-slate-500 mb-1.5">Periode</label>
             <select id="filterPeriode" class="input"></select>
           </div>
-          <button onclick="loadDashboard()" class="btn btn-primary">Terapkan</button>
+          <button onclick="loadDashboard()" class="btn btn-primary">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Terapkan
+          </button>
         </div>
       </div>
       <div id="dashContent"></div>
@@ -43,6 +51,7 @@
 
     let chartStatus = null, chartKK = null;
 
+    // ============ INIT ============
     async function init() {
       try {
         const [units, periodes] = await Promise.all([
@@ -50,18 +59,29 @@
           API.getPeriodes()
         ]);
 
-        document.getElementById('filterUnit').innerHTML = units.map(u =>
-          `<option value="${u.kode_unit}">${APP.esc(u.nama_unit)}</option>`
+        // Isi dropdown unit
+        const unitSel = document.getElementById('filterUnit');
+        unitSel.innerHTML = units.map(u =>
+          `<option value="${APP.esc(u.kode_unit)}">${APP.esc(u.nama_unit)}</option>`
         ).join('');
 
-        document.getElementById('filterPeriode').innerHTML = periodes
-          .filter(p => p.status === 'aktif')
-          .map(p => `<option value="${p.periode}">${APP.esc(p.nama_periode)}</option>`)
+        // ✅ Isi dropdown periode — normalisasi ".0"
+        const normPeriod = (v) => String(v).replace(/\.0+$/, '').trim();
+
+        const periodeSel = document.getElementById('filterPeriode');
+        periodeSel.innerHTML = periodes
+          .filter(p => String(p.status || '').toLowerCase().trim() === 'aktif')
+          .map(p => {
+            const clean = normPeriod(p.periode);
+            const nama = p.nama_periode || `Tahun ${clean}`;
+            return `<option value="${APP.esc(clean)}">${APP.esc(nama)}</option>`;
+          })
           .join('');
 
+        // Default: unit dari user
         const user = AUTH.getUser();
         if (user && user.kode_unit) {
-          document.getElementById('filterUnit').value = user.kode_unit;
+          unitSel.value = user.kode_unit;
         }
 
         loadDashboard();
@@ -70,6 +90,7 @@
       }
     }
 
+    // ============ LOAD DATA ============
     async function loadDashboard() {
       const unit = document.getElementById('filterUnit').value;
       const periode = document.getElementById('filterPeriode').value;
@@ -79,56 +100,117 @@
 
       try {
         const data = await API.getDashboard(unit, periode);
-        render(data, unit, periode);
+        renderDashboard(data, unit, periode);
       } catch (err) {
         el.innerHTML = APP.errorBox(err.message);
       }
     }
 
-    function render(data, unit, periode) {
+    // ============ RENDER ============
+    function renderDashboard(data, unit, periode) {
       const el = document.getElementById('dashContent');
 
+      // Hitung total proses
+      const inProgress = (data.status.Upload || 0) + (data.status.Proses || 0) + (data.status.Verifikasi || 0);
+      const belum = data.status.Belum || 0;
+      const selesai = data.status.Selesai || 0;
+
       el.innerHTML = `
+        <!-- STAT CARDS -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           ${statCard('Total Parameter', data.total_parameter, 'Semua KK', 'from-blue-500 to-blue-600', '📊')}
-          ${statCard('Selesai', data.status.Selesai, `${data.progress}% dari total`, 'from-emerald-500 to-emerald-600', '✓')}
-          ${statCard('Proses', data.status.Upload + data.status.Proses, 'sedang berjalan', 'from-amber-500 to-amber-600', '⏳')}
-          ${statCard('Belum Mulai', data.status.Belum, 'perlu tindak lanjut', 'from-rose-500 to-rose-600', '⚠')}
+          ${statCard('Selesai', selesai, `${data.progress}% dari total`, 'from-emerald-500 to-emerald-600', '✓')}
+          ${statCard('Sedang Proses', inProgress, 'upload · verifikasi · proses', 'from-amber-500 to-amber-600', '⏳')}
+          ${statCard('Belum Mulai', belum, 'perlu tindak lanjut', 'from-rose-500 to-rose-600', '⚠')}
         </div>
 
-        <div class="card p-6 mb-6">
-          <div class="flex justify-between items-center mb-3">
+        <!-- PROGRESS KESELURUHAN -->
+        <div class="card p-6 mb-6 animate-fade-in">
+          <div class="flex flex-wrap justify-between items-center gap-3 mb-3">
             <div>
               <h2 class="font-bold text-slate-800">Progress Keseluruhan</h2>
-              <p class="text-xs text-slate-500 mt-0.5">${data.status.Selesai} dari ${data.total_parameter} parameter selesai</p>
+              <p class="text-xs text-slate-500 mt-0.5">
+                ${selesai} dari ${data.total_parameter} parameter selesai
+              </p>
             </div>
-            <div class="text-3xl font-bold text-blue-700">${data.progress}%</div>
+            <div class="text-right">
+              <div class="text-4xl font-bold text-blue-700">${data.progress}%</div>
+            </div>
           </div>
-          <div class="progress-bar mb-4"><div style="width: ${data.progress}%"></div></div>
-          <div class="flex flex-wrap gap-3 text-xs">
-            ${statusChip('Selesai', data.status.Selesai, 'bg-emerald-100 text-emerald-700')}
-            ${statusChip('Verifikasi', data.status.Verifikasi, 'bg-violet-100 text-violet-700')}
-            ${statusChip('Upload', data.status.Upload, 'bg-amber-100 text-amber-700')}
-            ${statusChip('Proses', data.status.Proses, 'bg-blue-100 text-blue-700')}
-            ${statusChip('Belum', data.status.Belum, 'bg-slate-100 text-slate-700')}
-            ${statusChip('Revisi', data.status.Revisi, 'bg-rose-100 text-rose-700')}
+
+          <div class="progress-bar mb-4">
+            <div style="width: ${data.progress}%"></div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            ${statusChip('Selesai', selesai, 'bg-emerald-100 text-emerald-700')}
+            ${statusChip('Verifikasi', data.status.Verifikasi || 0, 'bg-violet-100 text-violet-700')}
+            ${statusChip('Upload', data.status.Upload || 0, 'bg-amber-100 text-amber-700')}
+            ${statusChip('Proses', data.status.Proses || 0, 'bg-blue-100 text-blue-700')}
+            ${statusChip('Belum', belum, 'bg-slate-100 text-slate-700')}
+            ${statusChip('Revisi', data.status.Revisi || 0, 'bg-rose-100 text-rose-700')}
           </div>
         </div>
 
+        <!-- EVIDEN SUMMARY (jika ada) -->
+        ${data.eviden ? `
+          <div class="card p-5 mb-6 animate-fade-in">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                  </svg>
+                  Ringkasan Eviden
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">Status kelengkapan dokumen pendukung</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+              <div class="text-center p-4 rounded-xl bg-blue-50 border border-blue-100">
+                <div class="text-2xl font-bold text-blue-700">${data.eviden.total || 0}</div>
+                <div class="text-xs text-blue-600 mt-1 font-medium">Total Item</div>
+              </div>
+              <div class="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                <div class="text-2xl font-bold text-emerald-700">${data.eviden.terupload || 0}</div>
+                <div class="text-xs text-emerald-600 mt-1 font-medium">Terupload</div>
+              </div>
+              <div class="text-center p-4 rounded-xl bg-rose-50 border border-rose-100">
+                <div class="text-2xl font-bold text-rose-700">${data.eviden.belum || 0}</div>
+                <div class="text-xs text-rose-600 mt-1 font-medium">Belum Upload</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- CHARTS -->
         <div class="grid lg:grid-cols-3 gap-6 mb-6">
-          <div class="card p-5">
+          <div class="card p-5 animate-fade-in-delay-1">
             <h2 class="font-bold text-slate-800 mb-3 text-sm">Distribusi Status</h2>
-            <canvas id="chartStatus" height="200"></canvas>
+            <div class="flex items-center justify-center" style="height: 220px;">
+              <canvas id="chartStatus"></canvas>
+            </div>
           </div>
-          <div class="card p-5 lg:col-span-2">
-            <h2 class="font-bold text-slate-800 mb-3 text-sm">Progress per KK</h2>
-            <canvas id="chartKK" height="120"></canvas>
+          <div class="card p-5 lg:col-span-2 animate-fade-in-delay-2">
+            <h2 class="font-bold text-slate-800 mb-3 text-sm">Progress per Kelompok Kriteria</h2>
+            <div style="height: 220px;">
+              <canvas id="chartKK"></canvas>
+            </div>
           </div>
         </div>
 
-        <div class="card overflow-hidden">
-          <div class="px-6 py-4 border-b border-slate-100">
-            <h2 class="font-bold text-slate-800">Rincian per Kelompok Kriteria</h2>
+        <!-- TABEL PER KK -->
+        <div class="card overflow-hidden animate-fade-in-delay-3">
+          <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h2 class="font-bold text-slate-800">Rincian per Kelompok Kriteria</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Klik "Lihat" untuk detail parameter</p>
+            </div>
+            <div class="text-xs text-slate-500">
+              Total ${data.per_kk.length} KK
+            </div>
           </div>
           <div class="overflow-x-auto">
             <table class="table-modern">
@@ -142,35 +224,57 @@
                 </tr>
               </thead>
               <tbody>
-                ${data.per_kk.map(kk => `
+                ${data.per_kk.length === 0 ? `
                   <tr>
-                    <td>
-                      <span class="inline-flex items-center gap-2">
-                        <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">${kk.kode_kk.split('.')[0]}</span>
-                        <span class="font-medium text-slate-700">KK ${kk.kode_kk}</span>
-                      </span>
-                    </td>
-                    <td class="text-center font-medium">${kk.total}</td>
-                    <td class="text-center font-medium text-emerald-600">${kk.selesai}</td>
-                    <td>
-                      <div class="flex items-center gap-3 max-w-xs">
-                        <div class="progress-bar flex-1">
-                          <div style="width: ${kk.progress}%"></div>
-                        </div>
-                        <span class="text-xs font-semibold text-slate-600 w-10 text-right">${kk.progress}%</span>
-                      </div>
-                    </td>
-                    <td class="text-center">
-                      <a href="checklist.html?kk=${kk.kode_kk}&unit=${unit}&periode=${periode}" class="btn btn-ghost text-xs text-blue-700">Lihat →</a>
+                    <td colspan="5" class="text-center py-8 text-slate-400">
+                      Belum ada data untuk unit/periode ini
                     </td>
                   </tr>
-                `).join('')}
+                ` : data.per_kk.map(kk => {
+                  const progressColor = kk.progress >= 75 ? 'linear-gradient(90deg,#10b981,#059669)' :
+                                        kk.progress >= 50 ? 'linear-gradient(90deg,#f59e0b,#d97706)' :
+                                        'linear-gradient(90deg,#f43f5e,#e11d48)';
+                  return `
+                    <tr>
+                      <td>
+                        <span class="inline-flex items-center gap-2">
+                          <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                            ${kk.kode_kk.split('.')[0]}
+                          </span>
+                          <span class="font-medium text-slate-700">KK ${kk.kode_kk}</span>
+                        </span>
+                      </td>
+                      <td class="text-center font-medium">${kk.total}</td>
+                      <td class="text-center font-medium text-emerald-600">${kk.selesai}</td>
+                      <td>
+                        <div class="flex items-center gap-3 max-w-xs">
+                          <div class="progress-bar flex-1">
+                            <div style="width: ${kk.progress}%; background: ${progressColor}"></div>
+                          </div>
+                          <span class="text-xs font-semibold text-slate-600 w-10 text-right">${kk.progress}%</span>
+                        </div>
+                      </td>
+                      <td class="text-center">
+                        <a href="checklist.html?kk=${kk.kode_kk}&unit=${unit}&periode=${periode}"
+                           class="btn btn-ghost text-xs text-blue-700">
+                          Lihat →
+                        </a>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           </div>
         </div>
       `;
 
+      // Render charts
+      renderCharts(data);
+    }
+
+    // ============ CHARTS ============
+    function renderCharts(data) {
       if (chartStatus) chartStatus.destroy();
       if (chartKK) chartKK.destroy();
 
@@ -179,15 +283,29 @@
         data: {
           labels: ['Selesai', 'Verifikasi', 'Upload', 'Proses', 'Belum', 'Revisi'],
           datasets: [{
-            data: [data.status.Selesai, data.status.Verifikasi, data.status.Upload,
-                   data.status.Proses, data.status.Belum, data.status.Revisi],
+            data: [
+              data.status.Selesai || 0,
+              data.status.Verifikasi || 0,
+              data.status.Upload || 0,
+              data.status.Proses || 0,
+              data.status.Belum || 0,
+              data.status.Revisi || 0
+            ],
             backgroundColor: ['#10b981', '#8b5cf6', '#f59e0b', '#3b82f6', '#94a3b8', '#f43f5e'],
-            borderWidth: 0
+            borderWidth: 0,
+            spacing: 3
           }]
         },
         options: {
-          cutout: '72%',
-          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } } }
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 10, padding: 10, font: { size: 11 } }
+            }
+          }
         }
       });
 
@@ -196,25 +314,37 @@
         data: {
           labels: data.per_kk.map(k => 'KK ' + k.kode_kk),
           datasets: [{
-            label: 'Progress',
+            label: 'Progress (%)',
             data: data.per_kk.map(k => k.progress),
             backgroundColor: '#2563eb',
-            borderRadius: 8
+            hoverBackgroundColor: '#1d4ed8',
+            borderRadius: 8,
+            barThickness: 32
           }]
         },
         options: {
+          responsive: true,
+          maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' } },
-            x: { grid: { display: false } }
+            y: {
+              beginAtZero: true, max: 100,
+              grid: { color: '#f1f5f9' },
+              ticks: { color: '#94a3b8', font: { size: 11 } }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748b', font: { size: 11 } }
+            }
           }
         }
       });
     }
 
+    // ============ HELPER ============
     function statCard(label, value, sub, gradient, icon) {
       return `
-        <div class="card p-5">
+        <div class="card p-5 animate-fade-in">
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-lg shadow-lg mb-3">
             ${icon}
           </div>
@@ -226,13 +356,15 @@
     }
 
     function statusChip(label, val, cls) {
-      return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${cls} font-medium">
+      return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${cls} text-xs font-medium">
         <span class="w-1.5 h-1.5 rounded-full bg-current opacity-60"></span>
         ${label}: ${val}
       </span>`;
     }
 
+    // ============ START ============
     init();
   </script>
+
 </body>
 </html>
