@@ -375,6 +375,7 @@ document.addEventListener('click', (e) => {
   if (e.target.classList.contains('modal-overlay')) {
     if (e.target.id === 'modalEviden') ModalEviden.close();
     if (e.target.id === 'modalHapus') ModalHapus.close();
+    if (e.target.id === 'modalPIC') ModalPIC.close();  // ← TAMBAH
   }
 });
 
