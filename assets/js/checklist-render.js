@@ -29,13 +29,24 @@ function isUserPIC(user, trans) {
  * - Unit: hanya kalau PIC-nya dia
  * @returns {Boolean}
  */
+/**
+ * Cek apakah user boleh edit parameter ini
+ * - Admin: selalu boleh
+ * - Unit: hanya kalau PIC-nya dia
+ * @returns {Boolean}
+ */
 function canEditTrans(user, trans) {
   if (!user) return false;
 
   const role = String(user.role || '').toLowerCase();
-  if (role === 'admin' || role === 'verifikator') return true;
+
+  // Admin: full access
+  if (role === 'admin') return true;
+
+  // Unit: cek apakah PIC-nya dia
   if (role === 'unit') return isUserPIC(user, trans);
 
+  // Role lain (termasuk verifikator lama) → tidak boleh
   return false;
 }
 
