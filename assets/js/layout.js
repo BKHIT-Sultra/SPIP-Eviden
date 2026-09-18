@@ -32,7 +32,7 @@ const LAYOUT = {
     // ============ MENU HTML ============
     const menuHtml = menus.map(m => `
       <a href="${m.href}" class="sidebar-nav-item ${m.key === active ? 'active' : ''}">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff"
              style="width:20px;height:20px;max-width:20px;max-height:20px;flex-shrink:0;">
           ${icons[m.icon]}
         </svg>
