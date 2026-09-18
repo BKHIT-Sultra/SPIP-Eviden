@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KKLEAD I — Penetapan Tujuan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/custom.css">
+</head>
+<body>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/layout.js"></script>
+
+  <script>
+    AUTH.requireLogin();
+    LAYOUT.render('kklead1');
+  </script>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    let unit = params.get('unit');
+    let periode = params.get('periode');
+
+    async function initKKLead1() {
+      const user = AUTH.getUser();
+      if (!unit) unit = user?.kode_unit || '';
+      if (!periode) {
+        const periodes = await API.getPeriodes();
+        const aktif = periodes.find(p => String(p.status || '').toLowerCase().trim() === 'aktif');
+        periode = aktif ? String(aktif.periode).replace(/\.0+$/, '') : '';
+      }
+
+      LAYOUT.setTitle('KKLEAD I — Penetapan Tujuan', `Unit: ${unit} · Periode: ${periode}`);
+
+      const el = LAYOUT.content();
+      el.innerHTML = `
+        <!-- Info Panel -->
+        <div class="card p-5 mb-5 border-l-4 border-blue-600 bg-blue-50/30 animate-fade-in">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h2 class="font-bold text-slate-800 mb-1">Penetapan Tujuan</h2>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                Penilaian atas kualitas perumusan tujuan dan strategi pencapaiannya.
+                Meliputi penetapan tujuan K/L, kualitas sasaran strategis, dan strategi pencapaian sasaran.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu Sub -->
+        <div class="grid md:grid-cols-3 gap-4 mb-6">
+          ${subMenuCard('Penetapan Tujuan K/L', 'Menilai kejelasan dan keterukuran tujuan organisasi', 'target', 'blue')}
+          ${subMenuCard('Penilaian Kualitas Sasaran Strategis', 'Evaluasi keselarasan sasaran dengan tujuan', 'chart', 'violet')}
+          ${subMenuCard('Penilaian Strategi Pencapaian Sasaran', 'Kesesuaian strategi dengan sumber daya', 'compass', 'emerald')}
+        </div>
+
+        <!-- Info Coming Soon -->
+        <div class="card p-12 text-center animate-fade-in">
+          <div class="text-6xl mb-4">🚧</div>
+          <div class="text-lg font-semibold text-slate-800 mb-2">Dalam Pengembangan</div>
+          <div class="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+            Modul <b>KKLEAD I</b> sedang dalam tahap pengembangan.
+            Silakan hubungi admin untuk informasi lebih lanjut.
+          </div>
+        </div>
+      `;
+    }
+
+    function subMenuCard(title, desc, icon, color) {
+      const colors = {
+        blue:    'from-blue-500 to-blue-600',
+        violet:  'from-violet-500 to-violet-600',
+        emerald: 'from-emerald-500 to-emerald-600'
+      };
+      const icons = {
+        target:  '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+        chart:   '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>',
+        compass: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>'
+      };
+      return `
+        <div class="card p-5 hover:shadow-md transition cursor-pointer animate-fade-in">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${colors[color]} flex items-center justify-center text-white mb-3 shadow-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icons[icon]}</svg>
+          </div>
+          <div class="font-semibold text-slate-800 text-sm mb-1">${title}</div>
+          <div class="text-xs text-slate-500 leading-relaxed">${desc}</div>
+        </div>
+      `;
+    }
+
+    initKKLead1();
+  </script>
+</body>
+</html>
