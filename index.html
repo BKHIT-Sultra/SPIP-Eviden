@@ -7,45 +7,24 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="assets/css/custom.css">
 </head>
-<body class="login-bg bg-animated min-h-screen flex items-center justify-center p-4">
+<body class="login-bg min-h-screen flex items-center justify-center p-4">
 
-  <!-- ============================================== -->
-  <!-- BACKGROUND LAYER 1: Aurora Borealis            -->
-  <!-- ============================================== -->
-  <div class="aurora-bg">
-    <div class="aurora"></div>
-  </div>
+  <!-- Constellation Canvas -->
+  <canvas id="constellation"></canvas>
 
-  <!-- ============================================== -->
-  <!-- BACKGROUND LAYER 2: Floating Orbs              -->
-  <!-- ============================================== -->
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-  <div class="orb orb-4"></div>
-
-  <!-- ============================================== -->
-  <!-- BACKGROUND LAYER 3: Floating Particles         -->
-  <!-- ============================================== -->
-  <div class="particles-container" id="particlesContainer"></div>
-
-  <!-- ============================================== -->
-  <!-- CURSOR GLOW                                     -->
-  <!-- ============================================== -->
+  <!-- Cursor Glow -->
   <div id="cursorGlow" class="cursor-glow" style="opacity: 0;"></div>
 
-  <!-- ============================================== -->
-  <!-- LOGIN CARD                                      -->
-  <!-- ============================================== -->
-  <div class="login-card content-wrapper w-full max-w-md bg-white/95 rounded-3xl shadow-2xl p-8 md:p-10 animate-fade-in">
+  <!-- Login Card -->
+  <div class="login-card w-full max-w-md bg-white/95 rounded-3xl shadow-2xl p-8 md:p-10 animate-fade-in">
 
-    <!-- Logo Morphing Blob -->
+    <!-- Logo -->
     <div class="text-center mb-8">
       <div class="blob-logo">
         <div class="blob-logo-glow"></div>
         <div class="blob-logo-outer"></div>
         <div class="blob-logo-inner">
-          <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#fff"
                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
                style="width:46px;height:46px;max-width:46px;max-height:46px;">
             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
@@ -58,15 +37,12 @@
 
     <!-- Form -->
     <form id="loginForm" class="space-y-5">
-
-      <!-- Username -->
       <div>
         <label class="block text-sm font-semibold text-slate-700 mb-2">Username</label>
         <div class="relative">
           <div class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shadow-blue-500/30 z-10">
             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
             </svg>
           </div>
           <input type="text" id="username" required autofocus
@@ -75,14 +51,12 @@
         </div>
       </div>
 
-      <!-- Password -->
       <div>
         <label class="block text-sm font-semibold text-slate-700 mb-2">Password</label>
         <div class="relative">
           <div class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shadow-blue-500/30 z-10">
             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
             </svg>
           </div>
           <input type="password" id="password" required
@@ -98,11 +72,8 @@
         </div>
       </div>
 
-      <!-- Error -->
-      <div id="errorMsg" class="hidden bg-rose-50 border-l-4 border-rose-500 text-rose-700 text-sm rounded-lg p-3 font-medium">
-      </div>
+      <div id="errorMsg" class="hidden bg-rose-50 border-l-4 border-rose-500 text-rose-700 text-sm rounded-lg p-3 font-medium"></div>
 
-      <!-- Login Button -->
       <button type="submit" id="loginBtn"
               class="w-full relative overflow-hidden group py-4 rounded-xl text-white font-semibold text-base
                      bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800
@@ -127,9 +98,6 @@
     </div>
   </div>
 
-  <!-- ============================================== -->
-  <!-- SCRIPTS                                         -->
-  <!-- ============================================== -->
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>
 
@@ -141,43 +109,114 @@
       pwd.type = pwd.type === 'password' ? 'text' : 'password';
     }
 
-    // ============ FLOATING PARTICLES ============
-    (function createParticles() {
-      const container = document.getElementById('particlesContainer');
-      if (!container) return;
+    // ============ CONSTELLATION ============
+    (function constellation() {
+      const canvas = document.getElementById('constellation');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let particles = [];
 
-      const COUNT = 30; // jumlah partikel
-      for (let i = 0; i < COUNT; i++) {
-        const p = document.createElement('div');
-        p.className = 'particle';
+      const isMobile = window.innerWidth < 768;
+      const COUNT = isMobile ? 30 : 60;
+      const MAX_DIST = isMobile ? 100 : 150;
+      let mouse = { x: null, y: null };
 
-        // Random posisi
-        const x = Math.random() * 100;
-        // Random size (2-6px)
-        const size = 2 + Math.random() * 4;
-        // Random durasi (12-25 detik)
-        const duration = 12 + Math.random() * 13;
-        // Random delay
-        const delay = -Math.random() * duration;
-
-        p.style.left = x + '%';
-        p.style.width = size + 'px';
-        p.style.height = size + 'px';
-        p.style.animationDuration = duration + 's';
-        p.style.animationDelay = delay + 's';
-
-        // Random warna (biru / ungu / cyan)
-        const colors = [
-          'rgba(147,197,253,0.9)',  // blue-300
-          'rgba(167,139,250,0.8)',  // violet-400
-          'rgba(103,232,249,0.8)'   // cyan-300
-        ];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        p.style.background = color;
-        p.style.boxShadow = `0 0 10px ${color}, 0 0 20px ${color}`;
-
-        container.appendChild(p);
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
       }
+
+      function init() {
+        particles = [];
+        for (let i = 0; i < COUNT; i++) {
+          particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            r: Math.random() * 2 + 1
+          });
+        }
+      }
+
+      document.addEventListener('mousemove', (e) => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
+
+      document.addEventListener('mouseleave', () => {
+        mouse.x = null;
+        mouse.y = null;
+      });
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+        });
+
+        // Garis antar partikel
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < MAX_DIST) {
+              ctx.strokeStyle = `rgba(147,197,253,${0.5 * (1 - dist / MAX_DIST)})`;
+              ctx.lineWidth = 0.6;
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Garis ke kursor
+        if (mouse.x !== null) {
+          particles.forEach(p => {
+            const dx = p.x - mouse.x;
+            const dy = p.y - mouse.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 180) {
+              ctx.strokeStyle = `rgba(96,165,250,${0.6 * (1 - dist / 180)})`;
+              ctx.lineWidth = 0.8;
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(mouse.x, mouse.y);
+              ctx.stroke();
+            }
+          });
+        }
+
+        // Partikel
+        particles.forEach(p => {
+          ctx.fillStyle = 'rgba(191,219,254,0.9)';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = 'rgba(147,197,253,0.15)';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        requestAnimationFrame(animate);
+      }
+
+      resize();
+      init();
+      animate();
+
+      window.addEventListener('resize', () => {
+        resize();
+        init();
+      });
     })();
 
     // ============ CURSOR GLOW ============
@@ -213,7 +252,6 @@
     // ============ LOGIN ============
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-
       const btn = document.getElementById('loginBtn');
       const btnText = document.getElementById('btnText');
       const errEl = document.getElementById('errorMsg');
