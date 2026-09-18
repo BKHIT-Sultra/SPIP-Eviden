@@ -186,3 +186,43 @@
   position: relative;
   z-index: 10;
 }
+
+
+/* ============================================
+   SIDEBAR LOGO — Mini Morphing Blob
+   ============================================ */
+
+.sidebar-logo {
+  position: relative;
+  width: 40px;
+  height: 40px;
+}
+
+.sidebar-logo-outer {
+  position: absolute;
+  inset: -3px;
+  background: conic-gradient(
+    from 0deg,
+    #60a5fa, #a78bfa, #22d3ee, #60a5fa, #a78bfa, #60a5fa
+  );
+  animation: blobMorph 8s ease-in-out infinite,
+             blobRotate 15s linear infinite;
+  filter: blur(2px);
+  opacity: 0.85;
+}
+
+.sidebar-logo-inner {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: blobMorph 8s ease-in-out infinite;
+  box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+}
+
+.sidebar-logo-inner svg {
+  width: 20px;
+  height: 20px;
+}
