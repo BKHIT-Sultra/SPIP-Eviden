@@ -9,7 +9,7 @@ function renderChecklist() {
   const el = LAYOUT.content();
 
   LAYOUT.setTitle(
-    kodeKK ? `KK ${kodeKK}` : 'Semua Checklist',
+    kodeKK ? `KK ${kodeKK}` : 'KKLEAD II — Struktur & Proses',
     `${allData.length} parameter · ${unit} · ${periode}`
   );
 
