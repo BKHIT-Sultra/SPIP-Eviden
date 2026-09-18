@@ -152,6 +152,74 @@
   </div>
 
   <!-- ============================================== -->
+  <!-- MODAL SET PIC                                  -->
+  <!-- ============================================== -->
+  <div id="modalPIC" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full modal-content">
+  
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          Set PIC
+        </h3>
+        <button onclick="ModalPIC.close()" class="btn btn-ghost p-1.5">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+  
+      <!-- Body -->
+      <div class="p-6 space-y-4">
+  
+        <!-- Info parameter -->
+        <div class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600">
+          <div class="font-mono text-slate-500">ID</div>
+          <div id="modalPICIdText" class="font-medium text-slate-800 break-all">-</div>
+        </div>
+  
+        <!-- Pilih dari user -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Pilih dari Daftar User
+          </label>
+          <select id="modalPICUser" class="input" onchange="ModalPIC.onUserSelect()">
+            <option value="">— Pilih user —</option>
+          </select>
+          <div class="text-xs text-slate-400 mt-1">
+            Atau isi manual di bawah
+          </div>
+        </div>
+  
+        <!-- Input manual -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Nama PIC
+          </label>
+          <input type="text" id="modalPICNama" class="input"
+                 placeholder="mis. Budi Santoso"/>
+          <div class="text-xs text-slate-400 mt-1">
+            Kosongkan untuk menghapus PIC
+          </div>
+        </div>
+  
+      </div>
+  
+      <!-- Footer -->
+      <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="ModalPIC.close()" class="btn btn-secondary text-sm">Batal</button>
+        <button id="modalPICSubmitBtn" onclick="ModalPIC.submit()" class="btn btn-primary text-sm">
+          Simpan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
   <!-- MODULES (load di BAWAH, karena butuh DOM)       -->
   <!-- ============================================== -->
   <script src="assets/js/checklist-modal.js"></script>
