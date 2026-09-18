@@ -23,7 +23,6 @@ function renderChecklist() {
 
   const filterHtml = renderFilterBar();
 
-  // Group per KK
   const groups = {};
   allData.forEach(d => {
     if (!groups[d.kode_kk]) {
@@ -36,9 +35,21 @@ function renderChecklist() {
 
   el.innerHTML = headerHtml + filterHtml + `<div class="space-y-4">${groupsHtml}</div>`;
 
+  // ============ EVENT LISTENER YANG SUDAH ADA ============
   document.getElementById('searchParam').addEventListener('input', filterChecklist);
   document.getElementById('filterStatus').addEventListener('change', filterChecklist);
   document.getElementById('filterGrade').addEventListener('change', filterChecklist);
+
+  // 👇 TAMBAHKAN DI SINI 👇
+  // Populate filter PIC
+  const allPICs = [...new Set(allData.map(d => d.trans.pic).filter(Boolean))].sort();
+  const picSel = document.getElementById('filterPIC');
+  if (picSel) {
+    picSel.innerHTML = '<option value="">Semua PIC</option>' +
+      allPICs.map(p => `<option value="${APP.esc(p)}">${APP.esc(p)}</option>`).join('');
+    picSel.addEventListener('change', filterChecklist);
+  }
+  // 👆 SAMPAI SINI 👆
 }
 
 // ============ EMPTY STATE ============
@@ -171,6 +182,15 @@ function renderItem(item) {
             ${t.grade_dipilih ? `<span class="${APP.gradeClass(t.grade_dipilih)}">Grade ${t.grade_dipilih}</span>` : ''}
             ${sumberBadges.join('')}
             <span class="${APP.statusClass(t.status)}">${t.status}</span>
+            ${t.pic ? `
+              <span class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-200">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                ${APP.esc(t.pic)}
+              </span>
+            ` : ''}
           </div>
           <div class="font-medium text-sm text-slate-800 leading-snug">${APP.esc(item.uraian_parameter)}</div>
           ${evidenCount ? `
@@ -195,6 +215,14 @@ function renderItem(item) {
         ${gradesHtml}
 
         <div class="mt-5 flex flex-wrap gap-2 justify-end pt-4 border-t border-slate-200">
+          <button onclick="openModalPIC('${item.id_trans}', '${APP.esc(t.pic || '').replace(/'/g, "\\'")}')"
+                  class="btn btn-secondary text-xs">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            ${t.pic ? 'Ubah PIC' : 'Set PIC'}
+          </button>
           <button onclick="ambilLinkUpload('${item.id_trans}')" class="btn btn-secondary text-xs">
             📁 Ambil Link Upload
           </button>
@@ -418,6 +446,7 @@ function filterChecklist() {
   const q = document.getElementById('searchParam').value.toLowerCase();
   const status = document.getElementById('filterStatus').value;
   const grade = document.getElementById('filterGrade').value;
+  const pic = document.getElementById('filterPIC')?.value || '';
 
   document.querySelectorAll('details[data-id]').forEach(el => {
     const text = el.textContent.toLowerCase();
@@ -425,6 +454,7 @@ function filterChecklist() {
     if (q && !text.includes(q)) show = false;
     if (status && !el.textContent.includes(status)) show = false;
     if (grade && !el.textContent.includes('Grade ' + grade)) show = false;
+    if (pic && !el.textContent.includes(pic)) show = false;
     el.style.display = show ? '' : 'none';
   });
 }
