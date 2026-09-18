@@ -116,7 +116,7 @@ const LAYOUT = {
 
             <!-- Kanan: Logout -->
             <div class="flex items-center gap-2">
-              <button onclick="AUTH.logout()"
+              <button onclick="konfirmasiLogout()"
                       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
                              text-blue-700 bg-white border-2 border-blue-200
                              hover:bg-blue-50 hover:border-blue-400 hover:text-blue-800
@@ -168,5 +168,11 @@ const LAYOUT = {
     return document.getElementById('pageContent');
   }
 };
+function konfirmasiLogout() {
+  if (confirm('Yakin ingin keluar dari aplikasi?')) {
+    AUTH.logout();
+  }
+}
 
 window.LAYOUT = LAYOUT;
+
