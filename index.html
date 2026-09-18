@@ -15,11 +15,17 @@
   <!-- Cursor Glow -->
   <div id="cursorGlow" class="cursor-glow" style="opacity: 0;"></div>
 
-  <!-- Login Card -->
-  <div class="login-card w-full max-w-md bg-white/95 rounded-3xl shadow-2xl p-8 md:p-10 animate-fade-in">
+  <!-- ============================================== -->
+  <!-- LOGIN CARD — dengan animasi interaktif         -->
+  <!-- ============================================== -->
+  <div class="login-card w-full max-w-md bg-white/95 rounded-3xl shadow-2xl p-8 md:p-10"
+       id="loginCard">
+
+    <!-- Shine effect melintas di card -->
+    <div class="card-shine"></div>
 
     <!-- Logo -->
-    <div class="text-center mb-8">
+    <div class="text-center mb-8 stagger-item" style="--delay: 0.1s;">
       <div class="blob-logo">
         <div class="blob-logo-glow"></div>
         <div class="blob-logo-outer"></div>
@@ -31,36 +37,41 @@
           </svg>
         </div>
       </div>
-      <h1 class="text-2xl md:text-3xl font-bold text-slate-800">SPIP Eviden</h1>
-      <p class="text-sm text-slate-500 mt-2">Sistem Pemantauan Eviden & Penilaian SPIP</p>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-800 fade-in-text">SPIP Eviden</h1>
+      <p class="text-sm text-slate-500 mt-2 stagger-item" style="--delay: 0.3s;">
+        Sistem Pemantauan Eviden & Penilaian SPIP
+      </p>
     </div>
 
     <!-- Form -->
     <form id="loginForm" class="space-y-5">
-      <div>
+
+      <!-- Username -->
+      <div class="stagger-item" style="--delay: 0.4s;">
         <label class="block text-sm font-semibold text-slate-700 mb-2">Username</label>
-        <div class="relative">
-          <div class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shadow-blue-500/30 z-10">
+        <div class="relative input-wrapper">
+          <div class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shadow-blue-500/30 z-10 input-icon">
             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
             </svg>
           </div>
           <input type="text" id="username" required autofocus
-                 class="w-full pl-14 pr-4 py-3.5 bg-gradient-to-br from-slate-50 to-blue-50/40 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 font-medium transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:shadow-lg focus:shadow-blue-500/10"
+                 class="w-full pl-14 pr-4 py-3.5 bg-gradient-to-br from-slate-50 to-blue-50/40 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 font-medium transition-all duration-300 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:shadow-lg focus:shadow-blue-500/10"
                  placeholder="Masukkan username"/>
         </div>
       </div>
 
-      <div>
+      <!-- Password -->
+      <div class="stagger-item" style="--delay: 0.5s;">
         <label class="block text-sm font-semibold text-slate-700 mb-2">Password</label>
-        <div class="relative">
-          <div class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shadow-blue-500/30 z-10">
+        <div class="relative input-wrapper">
+          <div class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shadow-blue-500/30 z-10 input-icon">
             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
             </svg>
           </div>
           <input type="password" id="password" required
-                 class="w-full pl-14 pr-12 py-3.5 bg-gradient-to-br from-slate-50 to-blue-50/40 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 font-medium transition-all duration-200 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:shadow-lg focus:shadow-blue-500/10"
+                 class="w-full pl-14 pr-12 py-3.5 bg-gradient-to-br from-slate-50 to-blue-50/40 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 font-medium transition-all duration-300 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:shadow-lg focus:shadow-blue-500/10"
                  placeholder="••••••••"/>
           <button type="button" onclick="togglePassword()"
                   class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
@@ -72,28 +83,32 @@
         </div>
       </div>
 
-      <div id="errorMsg" class="hidden bg-rose-50 border-l-4 border-rose-500 text-rose-700 text-sm rounded-lg p-3 font-medium"></div>
+      <!-- Error -->
+      <div id="errorMsg" class="hidden bg-rose-50 border-l-4 border-rose-500 text-rose-700 text-sm rounded-lg p-3 font-medium stagger-item"></div>
 
-      <button type="submit" id="loginBtn"
-              class="w-full relative overflow-hidden group py-4 rounded-xl text-white font-semibold text-base
-                     bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800
-                     shadow-lg shadow-blue-600/40
-                     hover:shadow-xl hover:shadow-blue-600/50 hover:scale-[1.02]
-                     active:scale-[0.98]
-                     disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100
-                     transition-all duration-200">
-        <span class="relative z-10 inline-flex items-center justify-center gap-2">
-          <span id="btnText">Masuk</span>
-          <svg class="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1"
-               fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-          </svg>
-        </span>
-        <div class="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/25 to-transparent"></div>
-      </button>
+      <!-- Login Button -->
+      <div class="stagger-item" style="--delay: 0.6s;">
+        <button type="submit" id="loginBtn"
+                class="w-full relative overflow-hidden group py-4 rounded-xl text-white font-semibold text-base
+                       bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800
+                       shadow-lg shadow-blue-600/40
+                       hover:shadow-xl hover:shadow-blue-600/50 hover:scale-[1.02]
+                       active:scale-[0.98]
+                       disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100
+                       transition-all duration-300">
+          <span class="relative z-10 inline-flex items-center justify-center gap-2">
+            <span id="btnText">Masuk</span>
+            <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+            </svg>
+          </span>
+          <div class="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/25 to-transparent"></div>
+        </button>
+      </div>
     </form>
 
-    <div class="text-center text-xs text-slate-400 mt-6">
+    <div class="text-center text-xs text-slate-400 mt-6 stagger-item" style="--delay: 0.7s;">
       Lupa password? Hubungi admin untuk reset.
     </div>
   </div>
@@ -109,7 +124,92 @@
       pwd.type = pwd.type === 'password' ? 'text' : 'password';
     }
 
-    // ============ CONSTELLATION ============
+    // ============================================
+    // LOGIN CARD 3D PARALLAX (follow cursor)
+    // ============================================
+    (function cardParallax() {
+      const card = document.getElementById('loginCard');
+      if (!card) return;
+
+      let mouseX = 0, mouseY = 0;
+      let rotX = 0, rotY = 0;
+      let currentRotX = 0, currentRotY = 0;
+
+      document.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        mouseX = (e.clientX - centerX) / rect.width;
+        mouseY = (e.clientY - centerY) / rect.height;
+
+        // Max rotasi 5 derajat
+        rotY = mouseX * 5;
+        rotX = -mouseY * 5;
+      });
+
+      function animate() {
+        // Smooth easing
+        currentRotX += (rotX - currentRotX) * 0.08;
+        currentRotY += (rotY - currentRotY) * 0.08;
+
+        card.style.transform = `perspective(1200px) rotateX(${currentRotX}deg) rotateY(${currentRotY}deg)`;
+        requestAnimationFrame(animate);
+      }
+      animate();
+    })();
+
+    // ============================================
+    // STAGGERED ENTRANCE ANIMATION
+    // ============================================
+    (function staggerEntrance() {
+      // Card muncul dengan scale + fade
+      const card = document.getElementById('loginCard');
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(30px) scale(0.95)';
+
+      setTimeout(() => {
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0) scale(1)';
+      }, 100);
+
+      // Staggered items muncul satu per satu
+      document.querySelectorAll('.stagger-item').forEach((el, idx) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+
+        setTimeout(() => {
+          el.style.transition = `opacity 0.5s ease ${el.style.getPropertyValue('--delay') || '0s'}, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${el.style.getPropertyValue('--delay') || '0s'}`;
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        }, 200);
+      });
+    })();
+
+    // ============================================
+    // INPUT FOCUS — Icon bounce
+    // ============================================
+    (function inputInteractions() {
+      document.querySelectorAll('.input-wrapper input').forEach(input => {
+        const wrapper = input.closest('.input-wrapper');
+        const icon = wrapper.querySelector('.input-icon');
+
+        input.addEventListener('focus', () => {
+          wrapper.style.transform = 'translateY(-2px)';
+          if (icon) icon.style.transform = 'scale(1.1) rotate(-5deg)';
+        });
+
+        input.addEventListener('blur', () => {
+          wrapper.style.transform = 'translateY(0)';
+          if (icon) icon.style.transform = 'scale(1) rotate(0deg)';
+        });
+      });
+    })();
+
+    // ============================================
+    // CONSTELLATION
+    // ============================================
     (function constellation() {
       const canvas = document.getElementById('constellation');
       if (!canvas) return;
@@ -159,7 +259,6 @@
           if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
         });
 
-        // Garis antar partikel
         for (let i = 0; i < particles.length; i++) {
           for (let j = i + 1; j < particles.length; j++) {
             const dx = particles[i].x - particles[j].x;
@@ -176,7 +275,6 @@
           }
         }
 
-        // Garis ke kursor
         if (mouse.x !== null) {
           particles.forEach(p => {
             const dx = p.x - mouse.x;
@@ -193,7 +291,6 @@
           });
         }
 
-        // Partikel
         particles.forEach(p => {
           ctx.fillStyle = 'rgba(191,219,254,0.9)';
           ctx.beginPath();
@@ -219,7 +316,9 @@
       });
     })();
 
-    // ============ CURSOR GLOW ============
+    // ============================================
+    // CURSOR GLOW
+    // ============================================
     (function cursorGlow() {
       const cursorGlow = document.getElementById('cursorGlow');
       if (!cursorGlow) return;
@@ -249,9 +348,12 @@
       animate();
     })();
 
-    // ============ LOGIN ============
+    // ============================================
+    // LOGIN
+    // ============================================
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+
       const btn = document.getElementById('loginBtn');
       const btnText = document.getElementById('btnText');
       const errEl = document.getElementById('errorMsg');
@@ -262,6 +364,7 @@
       btn.disabled = true;
       btnText.textContent = 'Memproses...';
 
+      // Shake animation kalau error
       try {
         const res = await fetch(CONFIG.API_URL, {
           method: 'POST',
@@ -271,18 +374,31 @@
         const data = await res.json();
 
         if (data.success) {
-          AUTH.saveUser(data.data.user, data.data.token, data.data.expires_at);
-          window.location.href = 'dashboard.html';
+          // Sukses — button pulse hijau
+          btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+          btnText.textContent = '✓ Berhasil!';
+
+          setTimeout(() => {
+            AUTH.saveUser(data.data.user, data.data.token, data.data.expires_at);
+            window.location.href = 'dashboard.html';
+          }, 500);
         } else {
           errEl.textContent = data.message || 'Login gagal';
           errEl.classList.remove('hidden');
+
+          // Shake card
+          const card = document.getElementById('loginCard');
+          card.style.animation = 'shake 0.5s';
+          setTimeout(() => card.style.animation = '', 500);
         }
       } catch (err) {
         errEl.textContent = 'Error: ' + err.message;
         errEl.classList.remove('hidden');
       } finally {
         btn.disabled = false;
-        btnText.textContent = 'Masuk';
+        if (btnText.textContent === 'Memproses...') {
+          btnText.textContent = 'Masuk';
+        }
       }
     });
   </script>
