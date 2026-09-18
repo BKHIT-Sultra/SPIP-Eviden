@@ -116,11 +116,15 @@ const LAYOUT = {
 
             <!-- Kanan: Logout -->
             <div class="flex items-center gap-2">
-              <button onclick="AUTH.logout()" class="btn btn-ghost text-xs">
+              <button onclick="AUTH.logout()"
+                      class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
+                             text-blue-700 bg-white border-2 border-blue-200
+                             hover:bg-blue-50 hover:border-blue-400 hover:text-blue-800
+                             active:scale-95 transition-all duration-200">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     style="width:16px;height:16px;">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                     style="width:16px;height:16px;max-width:16px;max-height:16px;flex-shrink:0;">
+                  <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                 </svg>
                 Logout
               </button>
