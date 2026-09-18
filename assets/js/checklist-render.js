@@ -160,79 +160,136 @@ function renderItem(item) {
     ? `${terupload}/${totalEviden} dokumen terupload`
     : '';
 
+  // Escape nama PIC untuk onclick
+  const picEsc = APP.esc(t.pic || '').replace(/'/g, "\\'");
+
   return `
     <details class="group" data-id="${item.id_trans}">
-      <summary class="p-4 hover:bg-slate-50 flex items-start gap-3 transition cursor-pointer">
-        <div class="pt-0.5 shrink-0">
-          <div class="w-6 h-6 rounded-full flex items-center justify-center ${
-            t.status === 'Selesai' ? 'bg-emerald-500' :
-            t.status === 'Upload'  ? 'bg-amber-500' :
-            t.status === 'Belum'   ? 'bg-slate-300' : 'bg-blue-500'
-          }">
-            ${t.status === 'Selesai' ? `
-              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-              </svg>` : ''}
-          </div>
-        </div>
+      <summary class="p-4 hover:bg-slate-50 transition cursor-pointer list-none">
+        <div class="flex items-start gap-3">
 
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
-            <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">Param ${item.no_parameter}</span>
-            ${t.grade_dipilih ? `<span class="${APP.gradeClass(t.grade_dipilih)}">Grade ${t.grade_dipilih}</span>` : ''}
-            ${sumberBadges.join('')}
-            <span class="${APP.statusClass(t.status)}">${t.status}</span>
-            ${t.pic ? `
-              <span class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-200">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                </svg>
-                ${APP.esc(t.pic)}
-              </span>
-            ` : ''}
-          </div>
-          <div class="font-medium text-sm text-slate-800 leading-snug">${APP.esc(item.uraian_parameter)}</div>
-          ${evidenCount ? `
-            <div class="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-              </svg>
-              ${evidenCount}
+          <!-- Status indicator -->
+          <div class="pt-0.5 shrink-0">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center ${
+              t.status === 'Selesai' ? 'bg-emerald-500' :
+              t.status === 'Upload'  ? 'bg-amber-500' :
+              t.status === 'Belum'   ? 'bg-slate-300' : 'bg-blue-500'
+            }">
+              ${t.status === 'Selesai' ? `
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                </svg>` : ''}
             </div>
-          ` : ''}
-        </div>
+          </div>
 
-        <div class="pt-1 shrink-0 text-slate-400">
-          <svg class="w-5 h-5 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
+          <!-- Content -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-3 flex-wrap lg:flex-nowrap">
+
+              <!-- KIRI: Info parameter -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
+                  <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">Param ${item.no_parameter}</span>
+                  ${t.grade_dipilih ? `<span class="${APP.gradeClass(t.grade_dipilih)}">Grade ${t.grade_dipilih}</span>` : ''}
+                  ${sumberBadges.join('')}
+                  <span class="${APP.statusClass(t.status)}">${t.status}</span>
+                  ${t.pic ? `
+                    <span class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-200">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                      </svg>
+                      ${APP.esc(t.pic)}
+                    </span>
+                  ` : ''}
+                </div>
+                <div class="font-medium text-sm text-slate-800 leading-snug">
+                  ${APP.esc(item.uraian_parameter)}
+                </div>
+                ${evidenCount ? `
+                  <div class="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                    </svg>
+                    ${evidenCount}
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- KANAN: Aksi (stop propagation agar tidak toggle details) -->
+              <div class="flex items-center gap-1.5 shrink-0 flex-wrap"
+                   onclick="event.preventDefault(); event.stopPropagation();">
+
+                <button onclick="openModalPIC('${item.id_trans}', '${picEsc}')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
+                               bg-white border border-slate-200 text-slate-600
+                               hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
+                               active:scale-95 transition-all duration-150"
+                        title="${t.pic ? 'Ubah PIC' : 'Set PIC'}">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                  </svg>
+                  <span class="hidden sm:inline">${t.pic ? 'Ubah PIC' : 'Set PIC'}</span>
+                </button>
+
+                <button onclick="ambilLinkUpload('${item.id_trans}')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
+                               bg-white border border-slate-200 text-slate-600
+                               hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
+                               active:scale-95 transition-all duration-150"
+                        title="Ambil Link Upload">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                  </svg>
+                  <span class="hidden sm:inline">Ambil Link</span>
+                </button>
+
+                <button onclick="syncFolder('${item.id_trans}')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
+                               bg-white border border-slate-200 text-slate-600
+                               hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
+                               active:scale-95 transition-all duration-150"
+                        title="Sync Folder Drive">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                  <span class="hidden sm:inline">Sync</span>
+                </button>
+
+                <button onclick="updateStatus('${item.id_trans}', '${t.status}')"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg
+                               text-white bg-gradient-to-r from-blue-600 to-blue-700
+                               shadow-md shadow-blue-500/30
+                               hover:from-blue-700 hover:to-blue-800 hover:shadow-lg hover:shadow-blue-500/40
+                               active:scale-95 transition-all duration-150"
+                        title="Update Status">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  <span class="hidden sm:inline">Update</span>
+                </button>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Chevron -->
+          <div class="pt-1 shrink-0 text-slate-400">
+            <svg class="w-5 h-5 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
         </div>
       </summary>
 
       <div class="px-5 pb-5 pt-3 bg-slate-50/50 border-t border-slate-100">
         <div class="text-xs font-semibold text-slate-500 uppercase mb-3">Referensi Grade</div>
         ${gradesHtml}
-
-        <div class="mt-5 flex flex-wrap gap-2 justify-end pt-4 border-t border-slate-200">
-          <button onclick="openModalPIC('${item.id_trans}', '${APP.esc(t.pic || '').replace(/'/g, "\\'")}')"
-                  class="btn btn-secondary text-xs">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-            </svg>
-            ${t.pic ? 'Ubah PIC' : 'Set PIC'}
-          </button>
-          <button onclick="ambilLinkUpload('${item.id_trans}')" class="btn btn-secondary text-xs">
-            📁 Ambil Link Upload
-          </button>
-          <button onclick="syncFolder('${item.id_trans}')" class="btn btn-secondary text-xs">
-            🔄 Sync Folder
-          </button>
-          <button onclick="updateStatus('${item.id_trans}', '${t.status}')" class="btn btn-primary text-xs">
-            ⚙️ Update Status
-          </button>
-        </div>
       </div>
     </details>
   `;
