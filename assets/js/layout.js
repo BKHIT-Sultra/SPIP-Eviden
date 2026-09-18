@@ -41,8 +41,14 @@ const LAYOUT = {
     document.body.innerHTML = `
       <aside id="sidebar" class="sidebar">
         <div class="flex items-center gap-3 px-5 py-6 border-b border-white/10">
-          <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-            <span class="text-xl">📋</span>
+          <!-- Logo mini morphing blob -->
+          <div class="sidebar-logo shrink-0">
+            <div class="sidebar-logo-outer"></div>
+            <div class="sidebar-logo-inner">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+              </svg>
+            </div>
           </div>
           <div class="nav-label">
             <div class="text-white font-bold leading-tight">SPIP Eviden</div>
