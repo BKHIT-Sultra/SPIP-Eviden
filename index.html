@@ -21,9 +21,6 @@
   <div class="login-card w-full max-w-md bg-white/95 rounded-3xl shadow-2xl p-8 md:p-10"
        id="loginCard">
 
-    <!-- Shine effect melintas di card -->
-    <div class="card-shine"></div>
-
     <!-- Logo -->
     <div class="text-center mb-8 stagger-item" style="--delay: 0.1s;">
       <div class="blob-logo">
@@ -188,21 +185,18 @@
     })();
 
     // ============================================
-    // INPUT FOCUS — Icon bounce
+    // INPUT FOCUS — efek pada wrapper saja
     // ============================================
     (function inputInteractions() {
       document.querySelectorAll('.input-wrapper input').forEach(input => {
         const wrapper = input.closest('.input-wrapper');
-        const icon = wrapper.querySelector('.input-icon');
-
+    
         input.addEventListener('focus', () => {
-          wrapper.style.transform = 'translateY(-2px)';
-          if (icon) icon.style.transform = 'scale(1.1) rotate(-5deg)';
+          wrapper.classList.add('input-focused');
         });
-
+    
         input.addEventListener('blur', () => {
-          wrapper.style.transform = 'translateY(0)';
-          if (icon) icon.style.transform = 'scale(1) rotate(0deg)';
+          wrapper.classList.remove('input-focused');
         });
       });
     })();
