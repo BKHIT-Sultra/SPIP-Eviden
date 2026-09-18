@@ -389,6 +389,109 @@ document.getElementById('modalNama').addEventListener('keypress', (e) => {
 // Setup file input
 ModalEviden.setupFileInput();
 
+// ============ MODAL: SET PIC ============
+const ModalPIC = {
+
+  state: { idTrans: null },
+  usersLoaded: false,
+
+  async open(idTrans, picSekarang) {
+    this.state.idTrans = idTrans;
+
+    // Isi info
+    document.getElementById('modalPICIdText').textContent = idTrans;
+    document.getElementById('modalPICNama').value = picSekarang || '';
+    document.getElementById('modalPICUser').value = '';
+
+    // Load daftar user kalau belum
+    if (!this.usersLoaded) {
+      await this.loadUsers();
+    }
+
+    // Highlight user kalau cocok
+    if (picSekarang) {
+      const sel = document.getElementById('modalPICUser');
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === picSekarang) {
+          sel.value = picSekarang;
+          break;
+        }
+      }
+    }
+
+    document.getElementById('modalPIC').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('modalPICNama').focus(), 100);
+  },
+
+  async loadUsers() {
+    try {
+      const users = await API.get('getUsersList');
+      const sel = document.getElementById('modalPICUser');
+
+      // Simpan opsi pertama
+      sel.innerHTML = '<option value="">— Pilih user —</option>';
+
+      users.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.nama;
+        opt.textContent = `${u.nama} (${u.role}${u.kode_unit ? ' · ' + u.kode_unit : ''})`;
+        opt.dataset.nama = u.nama;
+        sel.appendChild(opt);
+      });
+
+      this.usersLoaded = true;
+    } catch (e) {
+      console.warn('Gagal load users:', e.message);
+      // Biarkan dropdown kosong — user tetap bisa isi manual
+    }
+  },
+
+  onUserSelect() {
+    const sel = document.getElementById('modalPICUser');
+    const nama = sel.value;
+    if (nama) {
+      document.getElementById('modalPICNama').value = nama;
+    }
+  },
+
+  async submit() {
+    const pic = document.getElementById('modalPICNama').value.trim();
+    const btn = document.getElementById('modalPICSubmitBtn');
+
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+
+    try {
+      await API.post('savePIC', {
+        id_trans: this.state.idTrans,
+        pic: pic
+      });
+
+      this.close();
+      if (typeof loadChecklist === 'function') loadChecklist();
+    } catch (err) {
+      alert('Gagal: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Simpan';
+    }
+  },
+
+  close() {
+    document.getElementById('modalPIC').classList.add('hidden');
+    document.body.style.overflow = '';
+    this.state = { idTrans: null };
+  }
+};
+
+window.ModalPIC = ModalPIC;
+
+// Shortcut
+function openModalPIC(idTrans, pic) {
+  ModalPIC.open(idTrans, pic);
+}
+
 // Expose ke window
 window.ModalEviden = ModalEviden;
 window.ModalHapus = ModalHapus;
