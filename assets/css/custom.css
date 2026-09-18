@@ -1,7 +1,401 @@
 /* ============================================
-   MORPHING BLOB LOGO
+   DESIGN SYSTEM — SPIP Eviden
    ============================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #dbeafe;
+  --sidebar-width: 260px;
+  --sidebar-collapsed: 72px;
+}
+
+* {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+/* ============================================
+   SIDEBAR
+   ============================================ */
+.sidebar {
+  background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%);
+  width: var(--sidebar-width);
+  min-height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  transition: width .25s ease;
+  overflow: hidden;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  margin: 4px 12px;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all .2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sidebar-nav-item:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.sidebar-nav-item.active {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+}
+
+.sidebar-nav-item svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed .nav-label {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ============================================
+   MAIN CONTENT
+   ============================================ */
+.main-content {
+  margin-left: var(--sidebar-width);
+  transition: margin-left .25s ease;
+  min-height: 100vh;
+}
+
+.main-content.collapsed {
+  margin-left: var(--sidebar-collapsed);
+}
+
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.mobile-open { transform: translateX(0); }
+  .main-content { margin-left: 0 !important; }
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+.card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  transition: all .2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(15,23,42,0.06);
+}
+
+.card-stat {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(30%, -30%);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all .15s ease;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.btn:active {
+  transform: scale(.97);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #64748b;
+}
+
+.btn-ghost:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.btn-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.btn-danger:hover {
+  background: #fecaca;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+
+.badge-A { background: #dcfce7; color: #166534; }
+.badge-B { background: #dbeafe; color: #1e40af; }
+.badge-C { background: #fef3c7; color: #92400e; }
+.badge-D { background: #fed7aa; color: #9a3412; }
+.badge-E { background: #fecaca; color: #991b1b; }
+
+.badge-belum      { background: #f1f5f9; color: #475569; }
+.badge-proses     { background: #dbeafe; color: #1e40af; }
+.badge-upload     { background: #fef3c7; color: #92400e; }
+.badge-verifikasi { background: #ede9fe; color: #6d28d9; }
+.badge-selesai    { background: #dcfce7; color: #166534; }
+.badge-revisi     { background: #fee2e2; color: #b91c1c; }
+
+/* ============================================
+   INPUTS
+   ============================================ */
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #fff;
+  transition: all .15s ease;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+.input::placeholder {
+  color: #94a3b8;
+}
+
+/* ============================================
+   PROGRESS BAR
+   ============================================ */
+.progress-bar {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  border-radius: 999px;
+  transition: width .5s ease;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeInUp .3s ease-out;
+}
+
+.animate-fade-in-delay-1 { animation: fadeInUp .3s ease-out .05s both; }
+.animate-fade-in-delay-2 { animation: fadeInUp .3s ease-out .1s both; }
+.animate-fade-in-delay-3 { animation: fadeInUp .3s ease-out .15s both; }
+
+/* ============================================
+   LOGIN PAGE
+   ============================================ */
+.login-bg {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #3b82f6 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-bg::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.login-bg::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.login-card {
+  position: relative;
+  z-index: 10;
+  backdrop-filter: blur(20px);
+}
+
+/* ============================================
+   DETAILS (accordion)
+   ============================================ */
+details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] .chevron {
+  transform: rotate(90deg);
+}
+
+.chevron {
+  transition: transform .2s ease;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+.table-modern {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-modern thead th {
+  background: #f8fafc;
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #64748b;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table-modern tbody td {
+  padding: 14px 16px;
+  font-size: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.table-modern tbody tr {
+  transition: background .15s;
+}
+
+.table-modern tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* ============================================
+   MODAL
+   ============================================ */
+.modal-overlay {
+  background: rgba(15,23,42,0.6);
+  backdrop-filter: blur(4px);
+  animation: fadeIn .15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  animation: slideUp .2s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   MORPHING BLOB LOGO
+   ============================================ */
 @keyframes blobMorph {
   0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
   20%      { border-radius: 35% 65% 70% 30% / 50% 60% 40% 50%; }
@@ -25,16 +419,6 @@
   50%      { opacity: 0.9; transform: scale(1.15); }
 }
 
-@keyframes floatUp {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50%      { transform: translateY(-20px) scale(1.02); }
-}
-
-@keyframes floatDown {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50%      { transform: translateY(20px) scale(0.98); }
-}
-
 @keyframes orbMove {
   0%   { transform: translate(0, 0) scale(1); }
   25%  { transform: translate(40px, -30px) scale(1.1); }
@@ -48,7 +432,7 @@
   100% { background-position: 60px 60px; }
 }
 
-/* Logo Container */
+/* Logo Container (Login) */
 .blob-logo {
   position: relative;
   width: 100px;
@@ -68,12 +452,8 @@
 .blob-logo-outer {
   position: absolute;
   inset: -6px;
-  background: conic-gradient(
-    from 0deg,
-    #3b82f6, #8b5cf6, #06b6d4, #3b82f6, #8b5cf6, #3b82f6
-  );
-  animation: blobMorph 8s ease-in-out infinite,
-             blobRotate 15s linear infinite;
+  background: conic-gradient(from 0deg, #3b82f6, #8b5cf6, #06b6d4, #3b82f6, #8b5cf6, #3b82f6);
+  animation: blobMorph 8s ease-in-out infinite, blobRotate 15s linear infinite;
   filter: blur(3px);
   opacity: 0.75;
 }
@@ -85,22 +465,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: blobMorph 8s ease-in-out infinite,
-             blobPulse 4s ease-in-out infinite;
+  animation: blobMorph 8s ease-in-out infinite, blobPulse 4s ease-in-out infinite;
   box-shadow: 0 10px 40px rgba(37,99,235,0.4);
+  overflow: hidden;
 }
 
 .blob-logo-inner svg {
-  width: 46px;
-  height: 46px;
-  color: #fff;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  width: 46px !important;
+  height: 46px !important;
+  max-width: 46px !important;
+  max-height: 46px !important;
+  flex-shrink: 0;
 }
 
 /* ============================================
    ANIMATED BACKGROUND — LOGIN
    ============================================ */
-
 .bg-animated {
   position: relative;
   overflow: hidden;
@@ -118,7 +498,6 @@
   pointer-events: none;
 }
 
-/* Floating Orbs */
 .orb {
   position: absolute;
   border-radius: 50%;
@@ -129,45 +508,36 @@
 }
 
 .orb-1 {
-  width: 400px;
-  height: 400px;
+  width: 400px; height: 400px;
   background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
-  top: -100px;
-  left: -100px;
+  top: -100px; left: -100px;
   animation: orbMove 20s ease-in-out infinite;
 }
 
 .orb-2 {
-  width: 350px;
-  height: 350px;
+  width: 350px; height: 350px;
   background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);
-  bottom: -80px;
-  right: -80px;
+  bottom: -80px; right: -80px;
   animation: orbMove 25s ease-in-out infinite reverse;
   animation-delay: -5s;
 }
 
 .orb-3 {
-  width: 300px;
-  height: 300px;
+  width: 300px; height: 300px;
   background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
-  top: 40%;
-  right: 15%;
+  top: 40%; right: 15%;
   animation: orbMove 18s ease-in-out infinite;
   animation-delay: -8s;
 }
 
 .orb-4 {
-  width: 250px;
-  height: 250px;
+  width: 250px; height: 250px;
   background: radial-gradient(circle, #6366f1 0%, transparent 70%);
-  bottom: 30%;
-  left: 10%;
+  bottom: 30%; left: 10%;
   animation: orbMove 22s ease-in-out infinite reverse;
   animation-delay: -3s;
 }
 
-/* Cursor Follow Glow */
 .cursor-glow {
   position: fixed;
   width: 500px;
@@ -181,32 +551,26 @@
   mix-blend-mode: screen;
 }
 
-/* Content Wrapper */
 .content-wrapper {
   position: relative;
   z-index: 10;
 }
 
-
 /* ============================================
    SIDEBAR LOGO — Mini Morphing Blob
    ============================================ */
-
 .sidebar-logo {
   position: relative;
   width: 40px;
   height: 40px;
+  flex-shrink: 0;
 }
 
 .sidebar-logo-outer {
   position: absolute;
   inset: -3px;
-  background: conic-gradient(
-    from 0deg,
-    #60a5fa, #a78bfa, #22d3ee, #60a5fa, #a78bfa, #60a5fa
-  );
-  animation: blobMorph 8s ease-in-out infinite,
-             blobRotate 15s linear infinite;
+  background: conic-gradient(from 0deg, #60a5fa, #a78bfa, #22d3ee, #60a5fa, #a78bfa, #60a5fa);
+  animation: blobMorph 8s ease-in-out infinite, blobRotate 15s linear infinite;
   filter: blur(2px);
   opacity: 0.85;
 }
@@ -220,33 +584,32 @@
   justify-content: center;
   animation: blobMorph 8s ease-in-out infinite;
   box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+  overflow: hidden;
 }
 
 .sidebar-logo-inner svg {
-  width: 20px;
-  height: 20px;
+  width: 20px !important;
+  height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  flex-shrink: 0;
 }
 
 /* ============================================
    GLOBAL SVG SIZE GUARD
-   Cegah SVG membesar tak terkendali
    ============================================ */
-
-/* Default: semua SVG max 32px */
 svg {
   max-width: 32px;
   max-height: 32px;
   flex-shrink: 0;
 }
 
-/* SVG di dalam link/menu — lebih kecil */
 a svg,
 button svg {
   max-width: 20px;
   max-height: 20px;
 }
 
-/* SVG di dalam card stat — ikut Tailwind class kalau ada */
 svg.w-4 { max-width: 16px; max-height: 16px; }
 svg.w-5 { max-width: 20px; max-height: 20px; }
 svg.w-6 { max-width: 24px; max-height: 24px; }
@@ -254,7 +617,6 @@ svg.w-8 { max-width: 32px; max-height: 32px; }
 svg.w-10 { max-width: 40px; max-height: 40px; }
 svg.w-12 { max-width: 48px; max-height: 48px; }
 
-/* Pengecualian — logo boleh lebih besar */
 .blob-logo-inner svg {
   max-width: 46px !important;
   max-height: 46px !important;
