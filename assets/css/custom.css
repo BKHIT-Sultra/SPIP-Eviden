@@ -226,3 +226,41 @@
   width: 20px;
   height: 20px;
 }
+
+/* ============================================
+   GLOBAL SVG SIZE GUARD
+   Cegah SVG membesar tak terkendali
+   ============================================ */
+
+/* Default: semua SVG max 32px */
+svg {
+  max-width: 32px;
+  max-height: 32px;
+  flex-shrink: 0;
+}
+
+/* SVG di dalam link/menu — lebih kecil */
+a svg,
+button svg {
+  max-width: 20px;
+  max-height: 20px;
+}
+
+/* SVG di dalam card stat — ikut Tailwind class kalau ada */
+svg.w-4 { max-width: 16px; max-height: 16px; }
+svg.w-5 { max-width: 20px; max-height: 20px; }
+svg.w-6 { max-width: 24px; max-height: 24px; }
+svg.w-8 { max-width: 32px; max-height: 32px; }
+svg.w-10 { max-width: 40px; max-height: 40px; }
+svg.w-12 { max-width: 48px; max-height: 48px; }
+
+/* Pengecualian — logo boleh lebih besar */
+.blob-logo-inner svg {
+  max-width: 46px !important;
+  max-height: 46px !important;
+}
+
+.sidebar-logo-inner svg {
+  max-width: 20px !important;
+  max-height: 20px !important;
+}
