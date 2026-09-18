@@ -1,8 +1,43 @@
 /**
  * =============================================
- * CHECKLIST RENDER — Semua function render UI
+ * CHECKLIST RENDER — dengan Role-Based Access
  * =============================================
  */
+
+// ============ PERMISSION HELPER ============
+
+/**
+ * Cek apakah user adalah PIC dari trans ini
+ * @param {Object} user - user dari AUTH.getUser()
+ * @param {Object} trans - trans object {pic, ...}
+ * @returns {Boolean}
+ */
+function isUserPIC(user, trans) {
+  if (!user || !trans) return false;
+  const pic = String(trans.pic || '').trim().toLowerCase();
+  if (!pic) return false;
+
+  const nama = String(user.nama || '').trim().toLowerCase();
+  const username = String(user.username || '').trim().toLowerCase();
+
+  return pic === nama || pic === username;
+}
+
+/**
+ * Cek apakah user boleh edit parameter ini
+ * - Admin / Verifikator: selalu boleh
+ * - Unit: hanya kalau PIC-nya dia
+ * @returns {Boolean}
+ */
+function canEditTrans(user, trans) {
+  if (!user) return false;
+
+  const role = String(user.role || '').toLowerCase();
+  if (role === 'admin' || role === 'verifikator') return true;
+  if (role === 'unit') return isUserPIC(user, trans);
+
+  return false;
+}
 
 // ============ RENDER MAIN ============
 function renderChecklist() {
@@ -35,24 +70,16 @@ function renderChecklist() {
 
   el.innerHTML = headerHtml + filterHtml + `<div class="space-y-4">${groupsHtml}</div>`;
 
-  // ============ EVENT LISTENER YANG SUDAH ADA ============
   document.getElementById('searchParam').addEventListener('input', filterChecklist);
   document.getElementById('filterStatus').addEventListener('change', filterChecklist);
   document.getElementById('filterGrade').addEventListener('change', filterChecklist);
 
-  // 👇 TAMBAHKAN DI SINI 👇
-  // Populate filter PIC
-  const allPICs = [...new Set(allData.map(d => d.trans.pic).filter(Boolean))].sort();
   const picSel = document.getElementById('filterPIC');
   if (picSel) {
-    picSel.innerHTML = '<option value="">Semua PIC</option>' +
-      allPICs.map(p => `<option value="${APP.esc(p)}">${APP.esc(p)}</option>`).join('');
     picSel.addEventListener('change', filterChecklist);
   }
-  // 👆 SAMPAI SINI 👆
 }
 
-// ============ EMPTY STATE ============
 function renderEmptyState() {
   return `
     <div class="card p-12 text-center">
@@ -68,7 +95,6 @@ function renderEmptyState() {
   `;
 }
 
-// ============ HEADER KK ============
 function renderHeaderKK() {
   const total = allData.length;
   const selesai = allData.filter(d => d.trans.status === 'Selesai').length;
@@ -94,8 +120,13 @@ function renderHeaderKK() {
   `;
 }
 
-// ============ FILTER BAR ============
 function renderFilterBar() {
+  // Ambil daftar PIC unik
+  const allPICs = [...new Set(allData.map(d => d.trans.pic).filter(Boolean))].sort();
+  const picOptions = allPICs
+    .map(p => `<option value="${APP.esc(p)}">${APP.esc(p)}</option>`)
+    .join('');
+
   return `
     <div class="card p-4 mb-6 animate-fade-in">
       <div class="flex flex-wrap gap-3 items-center">
@@ -114,12 +145,15 @@ function renderFilterBar() {
           <option value="">Semua Grade</option>
           <option>A</option><option>B</option><option>C</option><option>D</option><option>E</option>
         </select>
+        <select id="filterPIC" class="input max-w-[180px]">
+          <option value="">Semua PIC</option>
+          ${picOptions}
+        </select>
       </div>
     </div>
   `;
 }
 
-// ============ GROUP ============
 function renderGroup(g) {
   const total = g.items.length;
   const selesai = g.items.filter(i => i.trans.status === 'Selesai').length;
@@ -140,11 +174,16 @@ function renderGroup(g) {
   `;
 }
 
-// ============ ITEM ============
+// ============ RENDER ITEM ============
 function renderItem(item) {
   const t = item.trans;
   const allEviden = item.eviden || [];
   const selectedGrade = t.grade_dipilih;
+
+  // ✅ CEK PERMISSION
+  const user = AUTH.getUser();
+  const canEdit = canEditTrans(user, t);
+  const isPIC = isUserPIC(user, t);
 
   const sumberBadges = [];
   if (item.sumber.spip) sumberBadges.push('<span class="badge bg-emerald-100 text-emerald-700">SPIP</span>');
@@ -154,21 +193,46 @@ function renderItem(item) {
   const totalEviden = allEviden.length;
   const terupload = allEviden.filter(e => e.status === 'terupload').length;
 
-  const gradesHtml = item.grades.map(g => renderGradeCard(g, item, allEviden, selectedGrade)).join('');
+  const gradesHtml = item.grades.map(g =>
+    renderGradeCard(g, item, allEviden, selectedGrade, canEdit)
+  ).join('');
 
   const evidenCount = totalEviden > 0
     ? `${terupload}/${totalEviden} dokumen terupload`
     : '';
 
-  // Escape nama PIC untuk onclick
   const picEsc = APP.esc(t.pic || '').replace(/'/g, "\\'");
+
+  // ✅ Badge PIC dengan tanda "Ini Anda" kalau PIC-nya user login
+  const picBadge = t.pic
+    ? `<span class="inline-flex items-center gap-1 text-xs ${
+        isPIC ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-blue-50 text-blue-700 border-blue-200'
+      } px-2 py-0.5 rounded-md border">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+        ${APP.esc(t.pic)}
+        ${isPIC ? '<span class="font-semibold">· Anda</span>' : ''}
+      </span>`
+    : '';
+
+  // ✅ Badge "Terkunci" untuk role Unit yang bukan PIC
+  const lockedBadge = (!canEdit && user && String(user.role || '').toLowerCase() === 'unit')
+    ? `<span class="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md border border-slate-200">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+        Terkunci
+      </span>`
+    : '';
 
   return `
     <details class="group" data-id="${item.id_trans}">
       <summary class="p-4 hover:bg-slate-50 transition cursor-pointer list-none">
         <div class="flex items-start gap-3">
 
-          <!-- Status indicator -->
           <div class="pt-0.5 shrink-0">
             <div class="w-6 h-6 rounded-full flex items-center justify-center ${
               t.status === 'Selesai' ? 'bg-emerald-500' :
@@ -182,26 +246,17 @@ function renderItem(item) {
             </div>
           </div>
 
-          <!-- Content -->
           <div class="flex-1 min-w-0">
             <div class="flex items-start justify-between gap-3 flex-wrap lg:flex-nowrap">
 
-              <!-- KIRI: Info parameter -->
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
                   <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">Param ${item.no_parameter}</span>
                   ${t.grade_dipilih ? `<span class="${APP.gradeClass(t.grade_dipilih)}">Grade ${t.grade_dipilih}</span>` : ''}
                   ${sumberBadges.join('')}
                   <span class="${APP.statusClass(t.status)}">${t.status}</span>
-                  ${t.pic ? `
-                    <span class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-200">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                      </svg>
-                      ${APP.esc(t.pic)}
-                    </span>
-                  ` : ''}
+                  ${picBadge}
+                  ${lockedBadge}
                 </div>
                 <div class="font-medium text-sm text-slate-800 leading-snug">
                   ${APP.esc(item.uraian_parameter)}
@@ -216,69 +271,79 @@ function renderItem(item) {
                 ` : ''}
               </div>
 
-              <!-- KANAN: Aksi (stop propagation agar tidak toggle details) -->
-              <div class="flex items-center gap-1.5 shrink-0 flex-wrap"
-                   onclick="event.preventDefault(); event.stopPropagation();">
+              <!-- ====== ACTION BUTTONS ====== -->
+              <!-- Hanya tampil kalau canEdit = true -->
+              ${canEdit ? `
+                <div class="flex items-center gap-1.5 shrink-0 flex-wrap"
+                     onclick="event.preventDefault(); event.stopPropagation();">
 
-                <button onclick="openModalPIC('${item.id_trans}', '${picEsc}')"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
-                               bg-white border border-slate-200 text-slate-600
-                               hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
-                               active:scale-95 transition-all duration-150"
-                        title="${t.pic ? 'Ubah PIC' : 'Set PIC'}">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                  </svg>
-                  <span class="hidden sm:inline">${t.pic ? 'Ubah PIC' : 'Set PIC'}</span>
-                </button>
+                  <button onclick="openModalPIC('${item.id_trans}', '${picEsc}')"
+                          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
+                                 bg-white border border-slate-200 text-slate-600
+                                 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
+                                 active:scale-95 transition-all duration-150"
+                          title="${t.pic ? 'Ubah PIC' : 'Set PIC'}">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    <span class="hidden sm:inline">${t.pic ? 'Ubah PIC' : 'Set PIC'}</span>
+                  </button>
 
-                <button onclick="ambilLinkUpload('${item.id_trans}')"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
-                               bg-white border border-slate-200 text-slate-600
-                               hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
-                               active:scale-95 transition-all duration-150"
-                        title="Ambil Link Upload">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                  </svg>
-                  <span class="hidden sm:inline">Ambil Link</span>
-                </button>
+                  <button onclick="ambilLinkUpload('${item.id_trans}')"
+                          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
+                                 bg-white border border-slate-200 text-slate-600
+                                 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
+                                 active:scale-95 transition-all duration-150"
+                          title="Ambil Link Upload">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                    <span class="hidden sm:inline">Ambil Link</span>
+                  </button>
 
-                <button onclick="syncFolder('${item.id_trans}')"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
-                               bg-white border border-slate-200 text-slate-600
-                               hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
-                               active:scale-95 transition-all duration-150"
-                        title="Sync Folder Drive">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                  </svg>
-                  <span class="hidden sm:inline">Sync</span>
-                </button>
+                  <button onclick="syncFolder('${item.id_trans}')"
+                          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
+                                 bg-white border border-slate-200 text-slate-600
+                                 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
+                                 active:scale-95 transition-all duration-150"
+                          title="Sync Folder Drive">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span class="hidden sm:inline">Sync</span>
+                  </button>
 
-                <button onclick="updateStatus('${item.id_trans}', '${t.status}')"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg
-                               text-white bg-gradient-to-r from-blue-600 to-blue-700
-                               shadow-md shadow-blue-500/30
-                               hover:from-blue-700 hover:to-blue-800 hover:shadow-lg hover:shadow-blue-500/40
-                               active:scale-95 transition-all duration-150"
-                        title="Update Status">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                  </svg>
-                  <span class="hidden sm:inline">Update</span>
-                </button>
+                  <button onclick="updateStatus('${item.id_trans}', '${t.status}')"
+                          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg
+                                 text-white bg-gradient-to-r from-blue-600 to-blue-700
+                                 shadow-md shadow-blue-500/30
+                                 hover:from-blue-700 hover:to-blue-800 hover:shadow-lg hover:shadow-blue-500/40
+                                 active:scale-95 transition-all duration-150"
+                          title="Update Status">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <span class="hidden sm:inline">Update</span>
+                  </button>
 
-              </div>
+                </div>
+              ` : `
+                <!-- Role Unit yang bukan PIC — tampilkan info saja -->
+                <div class="flex items-center gap-1.5 shrink-0"
+                     onclick="event.preventDefault(); event.stopPropagation();">
+                  <div class="text-xs text-slate-400 italic px-2 py-1">
+                    Hanya PIC yang dapat mengubah
+                  </div>
+                </div>
+              `}
             </div>
           </div>
 
-          <!-- Chevron -->
           <div class="pt-1 shrink-0 text-slate-400">
             <svg class="w-5 h-5 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -296,7 +361,7 @@ function renderItem(item) {
 }
 
 // ============ GRADE CARD ============
-function renderGradeCard(g, item, allEviden, selectedGrade) {
+function renderGradeCard(g, item, allEviden, selectedGrade, canEdit) {
   const isSelected = selectedGrade && g.grade === selectedGrade;
   const gradeUpper = String(g.grade).toUpperCase();
 
@@ -352,20 +417,22 @@ function renderGradeCard(g, item, allEviden, selectedGrade) {
 
             ${ev.length > 0 ? `
               <div class="divide-y divide-slate-100">
-                ${ev.map((e, idx) => renderEvidenRow(e, idx + 1)).join('')}
+                ${ev.map((e, idx) => renderEvidenRow(e, idx + 1, canEdit)).join('')}
               </div>
             ` : ''}
 
-            <div class="p-3 bg-slate-50/50">
-              <button onclick="openModalTambah('${item.id_trans}', '${g.grade}')"
-                      class="w-full text-xs text-slate-600 hover:text-blue-700 hover:bg-white border border-dashed border-slate-300 hover:border-blue-400 rounded-lg py-2.5 inline-flex items-center justify-center gap-1.5 transition font-medium">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Tambah Item Lampiran
-              </button>
-            </div>
-
+            <!-- ✅ Tombol Tambah hanya muncul kalau canEdit -->
+            ${canEdit ? `
+              <div class="p-3 bg-slate-50/50">
+                <button onclick="openModalTambah('${item.id_trans}', '${g.grade}')"
+                        class="w-full text-xs text-slate-600 hover:text-blue-700 hover:bg-white border border-dashed border-slate-300 hover:border-blue-400 rounded-lg py-2.5 inline-flex items-center justify-center gap-1.5 transition font-medium">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                  </svg>
+                  Tambah Item Lampiran
+                </button>
+              </div>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -374,7 +441,7 @@ function renderGradeCard(g, item, allEviden, selectedGrade) {
 }
 
 // ============ EVIDEN ROW ============
-function renderEvidenRow(e, nomor) {
+function renderEvidenRow(e, nomor, canEdit) {
   const isUploaded = e.status === 'terupload';
   const isFile = e.jenis === 'file';
 
@@ -402,21 +469,14 @@ function renderEvidenRow(e, nomor) {
   let subtitle = '';
   if (isUploaded) {
     if (isFile) {
-      subtitle = [
-        e.file_name || '',
-        e.ukuran || '',
-        e.upload_by || '',
-        e.upload_at ? APP.formatDate(e.upload_at) : ''
-      ].filter(Boolean).join(' · ');
+      subtitle = [e.file_name, e.ukuran, e.upload_by, e.upload_at ? APP.formatDate(e.upload_at) : '']
+        .filter(Boolean).join(' · ');
     } else {
-      subtitle = [
-        e.link || '',
-        e.upload_by || '',
-        e.upload_at ? APP.formatDate(e.upload_at) : ''
-      ].filter(Boolean).join(' · ');
+      subtitle = [e.link, e.upload_by, e.upload_at ? APP.formatDate(e.upload_at) : '']
+        .filter(Boolean).join(' · ');
     }
   } else {
-    subtitle = 'Belum ada dokumen — klik Upload untuk melampirkan';
+    subtitle = 'Belum ada dokumen';
   }
 
   const badge = isUploaded
@@ -433,27 +493,58 @@ function renderEvidenRow(e, nomor) {
          Belum
        </span>`;
 
-  const namaEsc = APP.esc(e.nama_dokumen).replace(/'/g, "\\'");
+  const namaEsc = APP.esc(e.nama_dokumen || '').replace(/'/g, "\\'");
   const linkEsc = APP.esc(e.link || '').replace(/'/g, "\\'");
 
-  const actionBtn = isUploaded
+  // ✅ Tombol Buka (kalau uploaded) — selalu tampil, semua role bisa akses
+  const openBtn = isUploaded
     ? `<a href="${APP.esc(e.link || '#')}" target="_blank"
-          class="btn btn-ghost p-2 text-blue-700 hover:bg-blue-50"
-          title="Buka dokumen">
+          class="btn btn-ghost p-2 text-blue-700 hover:bg-blue-50" title="Buka dokumen">
          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
          </svg>
        </a>`
-    : `<button onclick="openModalUpload('${e.id_eviden}', '${namaEsc}')"
-               class="btn btn-primary text-xs px-3 py-1.5"
-               title="Upload dokumen">
+    : '';
+
+  // ✅ Tombol Upload — hanya kalau canEdit
+  const uploadBtn = (!isUploaded && canEdit)
+    ? `<button onclick="openModalUpload('${e.id_eviden}', '${namaEsc}')"
+               class="btn btn-primary text-xs px-3 py-1.5" title="Upload dokumen">
          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
          </svg>
          Upload
-       </button>`;
+       </button>`
+    : '';
+
+  // ✅ Tombol Edit — hanya kalau canEdit
+  const editBtn = canEdit
+    ? `<button onclick="openModalEdit('${e.id_eviden}', '${namaEsc}', '${linkEsc}')"
+              class="btn btn-ghost p-2" title="Edit">
+         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+         </svg>
+       </button>`
+    : '';
+
+  // ✅ Tombol Hapus — hanya kalau canEdit
+  const deleteBtn = canEdit
+    ? `<button onclick="openModalHapus('${e.id_eviden}', '${namaEsc}')"
+              class="btn btn-ghost p-2 hover:!bg-rose-50 hover:!text-rose-600" title="Hapus">
+         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
+         </svg>
+       </button>`
+    : '';
+
+  // ✅ Badge "Terkunci" kalau !canEdit dan belum upload
+  const lockedLabel = (!canEdit && !isUploaded)
+    ? `<span class="text-xs text-slate-400 italic px-2 py-1">Terkunci</span>`
+    : '';
 
   return `
     <div class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition">
@@ -467,21 +558,11 @@ function renderEvidenRow(e, nomor) {
         <div class="text-xs text-slate-400 mt-0.5 break-all">${APP.esc(subtitle)}</div>
       </div>
       <div class="flex items-center gap-0.5 shrink-0 pt-1">
-        ${actionBtn}
-        <button onclick="openModalEdit('${e.id_eviden}', '${namaEsc}', '${linkEsc}')"
-                class="btn btn-ghost p-2" title="Edit">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-          </svg>
-        </button>
-        <button onclick="openModalHapus('${e.id_eviden}', '${namaEsc}')"
-                class="btn btn-ghost p-2 hover:!bg-rose-50 hover:!text-rose-600" title="Hapus">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
-          </svg>
-        </button>
+        ${openBtn}
+        ${uploadBtn}
+        ${editBtn}
+        ${deleteBtn}
+        ${lockedLabel}
       </div>
     </div>
   `;
