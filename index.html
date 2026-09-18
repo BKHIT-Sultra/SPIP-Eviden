@@ -7,14 +7,30 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="assets/css/custom.css">
 </head>
-<body class="login-bg min-h-screen flex items-center justify-center p-4">
+<body class="login-bg bg-animated min-h-screen flex items-center justify-center p-4">
 
-  <div class="login-card w-full max-w-md bg-white/95 rounded-3xl shadow-2xl p-8 md:p-10 animate-fade-in">
+  <!-- Floating Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="orb orb-4"></div>
 
-    <!-- Logo -->
+  <!-- Cursor Glow -->
+  <div id="cursorGlow" class="cursor-glow" style="opacity: 0;"></div>
+
+  <!-- Content -->
+  <div class="login-card content-wrapper w-full max-w-md bg-white/95 rounded-3xl shadow-2xl p-8 md:p-10 animate-fade-in">
+
+    <!-- Logo Morphing Blob -->
     <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-500/30 mb-4">
-        <span class="text-3xl">📋</span>
+      <div class="blob-logo">
+        <div class="blob-logo-glow"></div>
+        <div class="blob-logo-outer"></div>
+        <div class="blob-logo-inner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+          </svg>
+        </div>
       </div>
       <h1 class="text-2xl md:text-3xl font-bold text-slate-800">SPIP Eviden</h1>
       <p class="text-sm text-slate-500 mt-2">Sistem Pemantauan Eviden & Penilaian SPIP</p>
@@ -75,6 +91,34 @@
       pwd.type = pwd.type === 'password' ? 'text' : 'password';
     }
 
+    // ============ CURSOR GLOW ============
+    const cursorGlow = document.getElementById('cursorGlow');
+    let glowX = window.innerWidth / 2;
+    let glowY = window.innerHeight / 2;
+    let currentX = glowX;
+    let currentY = glowY;
+
+    document.addEventListener('mousemove', (e) => {
+      glowX = e.clientX;
+      glowY = e.clientY;
+      cursorGlow.style.opacity = '1';
+    });
+
+    document.addEventListener('mouseleave', () => {
+      cursorGlow.style.opacity = '0';
+    });
+
+    // Smooth follow — easing
+    function animateGlow() {
+      currentX += (glowX - currentX) * 0.08;
+      currentY += (glowY - currentY) * 0.08;
+      cursorGlow.style.left = currentX + 'px';
+      cursorGlow.style.top = currentY + 'px';
+      requestAnimationFrame(animateGlow);
+    }
+    animateGlow();
+
+    // ============ LOGIN ============
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
