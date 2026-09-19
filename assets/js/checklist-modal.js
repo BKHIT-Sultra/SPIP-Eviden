@@ -61,6 +61,7 @@ const ModalEviden = {
   // ---------- OPEN: Edit ----------
   openEdit(idEviden, nama, link) {
     // ✅ SAVE STATE DULU
+    if (typeof markForRestore === 'function') markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     modalState = { mode: 'edit', idTrans: null, grade: null, idEviden };
