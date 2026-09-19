@@ -272,14 +272,22 @@ async function loadChecklist() {
 }
 
 // ============ ACTIONS ============
-async function ambilLinkUpload(idTrans) {
+async function ambilLinkUpload(idTrans, grade) {
   try {
-    const result = await API.getUploadLink(idTrans);
+    // Kirim grade ke API
+    const result = await API.getUploadLink(idTrans, grade);
+    
+    // Buka folder di tab baru
     window.open(result.folder_url, '_blank');
+    
+    // Opsional: copy link ke clipboard
+    // navigator.clipboard.writeText(result.folder_url);
+    // showToast('Link folder berhasil dibuka', 'success');
   } catch (err) {
     alert('Gagal: ' + err.message);
   }
 }
+window.ambilLinkUpload = ambilLinkUpload;
 
 async function syncFolder(idTrans) {
   if (!confirm('Sync file dari folder Drive?')) return;
