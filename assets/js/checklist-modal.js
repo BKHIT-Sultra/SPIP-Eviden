@@ -343,16 +343,95 @@ const ModalHapus = {
     document.getElementById('hapusNamaText').textContent = nama;
     document.getElementById('modalHapus').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+
+    // Reset tombol
+    const btn = document.querySelector('#modalHapus button.btn-danger');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
+        </svg>
+        Ya, Hapus
+      `;
+    }
   },
 
   async confirm() {
     if (!hapusState.idEviden) return;
+
+    const btn = document.querySelector('#modalHapus button.btn-danger');
+    const idEviden = hapusState.idEviden;
+
+    // ✅ 1. Loading state di tombol
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `
+        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Menghapus...
+      `;
+    }
+
     try {
-      await API.deleteEviden({ id_eviden: hapusState.idEviden });
+      // ✅ 2. Fade-out item sebelum hapus
+      const itemEl = document.querySelector(`[data-id-trans="${idEviden}"]`);
+      if (itemEl) {
+        itemEl.style.transition = 'all 0.3s ease';
+        itemEl.style.opacity = '0.5';
+        itemEl.style.transform = 'scale(0.98)';
+      }
+
+      // API call
+      await API.deleteEviden({ id_eviden: idEviden });
+
+      // ✅ 3. Tutup modal + tampil toast
       this.close();
-      if (typeof loadChecklist === 'function') loadChecklist();
+      showToast('Dokumen berhasil dihapus', 'success');
+
+      // ✅ 4. Delay kecil biar user lihat animasi
+      setTimeout(() => {
+        if (typeof loadChecklist === 'function') {
+          // Wrapper fade-out untuk konten
+          const content = document.getElementById('pageContent');
+          if (content) {
+            content.style.transition = 'opacity 0.25s ease';
+            content.style.opacity = '0.5';
+          }
+
+          setTimeout(() => {
+            loadChecklist();
+            // Restore opacity setelah load
+            setTimeout(() => {
+              if (content) content.style.opacity = '1';
+            }, 100);
+          }, 150);
+        }
+      }, 300);
+
     } catch (err) {
-      alert('Gagal: ' + err.message);
+      // Restore item state
+      const itemEl = document.querySelector(`[data-id-trans="${idEviden}"]`);
+      if (itemEl) {
+        itemEl.style.opacity = '1';
+        itemEl.style.transform = 'scale(1)';
+      }
+
+      showToast('Gagal menghapus: ' + err.message, 'error');
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
+          </svg>
+          Ya, Hapus
+        `;
+      }
     }
   },
 
@@ -492,6 +571,71 @@ window.ModalPIC = ModalPIC;
 function openModalPIC(idTrans, pic) {
   ModalPIC.open(idTrans, pic);
 }
+
+// ============================================
+// TOAST NOTIFICATION
+// ============================================
+function showToast(message, type = 'info', duration = 3000) {
+  // Buat container toast kalau belum ada
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'fixed bottom-6 right-6 z-[100] flex flex-col gap-2';
+    document.body.appendChild(container);
+  }
+
+  // Pilih warna & icon berdasarkan type
+  const config = {
+    success: {
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      text: 'text-emerald-800',
+      icon: `<svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+             </svg>`
+    },
+    error: {
+      bg: 'bg-rose-50',
+      border: 'border-rose-200',
+      text: 'text-rose-800',
+      icon: `<svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+             </svg>`
+    },
+    info: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      text: 'text-blue-800',
+      icon: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+             </svg>`
+    }
+  }[type] || config?.info;
+
+  // Buat elemen toast
+  const toast = document.createElement('div');
+  toast.className = `${config.bg} ${config.border} ${config.text} border rounded-xl shadow-lg p-4 flex items-center gap-3 min-w-[280px] max-w-md opacity-0 translate-x-8 transition-all duration-300`;
+  toast.innerHTML = `
+    <div class="shrink-0">${config.icon}</div>
+    <div class="flex-1 text-sm font-medium">${APP.esc(message)}</div>
+  `;
+
+  container.appendChild(toast);
+
+  // Trigger animasi masuk
+  requestAnimationFrame(() => {
+    toast.classList.remove('opacity-0', 'translate-x-8');
+  });
+
+  // Auto-dismiss
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-x-8');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+window.showToast = showToast;
 
 // Expose ke window
 window.ModalEviden = ModalEviden;
