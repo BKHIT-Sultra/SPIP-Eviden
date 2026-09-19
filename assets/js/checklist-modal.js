@@ -336,12 +336,10 @@ const ModalEviden = {
   // ---------- SHOW / HIDE / CLOSE ----------
   show() {
     document.getElementById('modalEviden').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
   },
 
   hide() {
     document.getElementById('modalEviden').classList.add('hidden');
-    document.body.style.overflow = '';
   },
 
   close() {
