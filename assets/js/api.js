@@ -45,7 +45,10 @@ const API = {
   getDashboard(unit, periode)     { return this.get('getDashboard', { kode_unit: unit, periode }); },
   getChecklist(unit, periode, kk) { return this.get('getChecklist', { kode_unit: unit, periode, kode_kk: kk }); },
   getDetail(idTrans)              { return this.get('getDetail', { id_trans: idTrans }); },
-  getUploadLink(idTrans)          { return this.get('getUploadLink', { id_trans: idTrans }); },
+  
+  // ✅ UBAH BARIS INI — tambahkan parameter grade
+  getUploadLink(idTrans, grade)   { return this.get('getUploadLink', { id_trans: idTrans, grade: grade }); },
+  
   getUnits()                      { return this.get('getUnits'); },
   getPeriodes()                   { return this.get('getPeriodes'); },
 
