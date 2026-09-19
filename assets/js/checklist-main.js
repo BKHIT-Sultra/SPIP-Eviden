@@ -25,8 +25,11 @@ function saveChecklistState() {
   // ✅ Skip kalau sedang restore
   if (_isRestoringState) return;
 
-  // ✅ Skip kalau window lagi scroll 0 tapi ada item terbuka (kemungkinan DOM reset)
-  const openCount = document.querySelectorAll('details[data-id][open]').length;
+  // ✅ Skip kalau modal sedang terbuka (body.overflow hidden)
+  if (document.body.style.overflow === 'hidden') {
+    console.log('⏸️ Skip save — modal terbuka');
+    return;
+  }
 
   try {
     const openDetails = [];
@@ -34,11 +37,15 @@ function saveChecklistState() {
       if (el.open) openDetails.push(el.dataset.id);
     });
 
+    const y = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+
     sessionStorage.setItem(CHECKLIST_STATE_KEY, JSON.stringify({
       open: openDetails,
-      scrollY: window.scrollY || window.pageYOffset || 0,
+      scrollY: y,
       timestamp: Date.now()
     }));
+
+    console.log('💾 State saved:', { open: openDetails.length, scrollY: y });
   } catch (e) {
     console.warn('Gagal save state:', e);
   }
@@ -50,60 +57,56 @@ function saveChecklistState() {
 function restoreChecklistState() {
   try {
     const raw = sessionStorage.getItem(CHECKLIST_STATE_KEY);
-    if (!raw) return;
+    if (!raw) {
+      console.log('📍 Tidak ada state tersimpan');
+      return;
+    }
 
     const state = JSON.parse(raw);
+    console.log('📍 Restoring state:', state);
 
+    // Expired 30 menit
     if (Date.now() - (state.timestamp || 0) > 30 * 60 * 1000) {
       sessionStorage.removeItem(CHECKLIST_STATE_KEY);
       return;
     }
 
-    const targetScrollY = state.scrollY || 0;
     const openIds = state.open || [];
+    const targetY = state.scrollY || 0;
 
-    if (openIds.length === 0 && targetScrollY === 0) return;
+    if (openIds.length === 0 && targetY === 0) return;
 
     _isRestoringState = true;
 
-    // Buka details
+    // 1️⃣ Buka details
     openIds.forEach(id => {
       const el = document.querySelector(`details[data-id="${id}"]`);
       if (el) el.open = true;
     });
 
-    // ✅ Multi-frame scroll dengan retry
-    if (targetScrollY > 0) {
-      let attempts = 0;
-      const maxAttempts = 8;
+    // 2️⃣ Scroll — pakai scrollIntoView ke element pertama
+    setTimeout(() => {
+      const firstId = openIds[0];
 
-      const tryScroll = () => {
-        attempts++;
-        window.scrollTo(0, targetScrollY);
-
-        const currentY = window.scrollY || window.pageYOffset || 0;
-        const diff = Math.abs(currentY - targetScrollY);
-
-        if (attempts < maxAttempts && diff > 30) {
-          requestAnimationFrame(tryScroll);
-        } else {
-          // Selesai — tunggu sebentar baru lepas guard
-          setTimeout(() => { _isRestoringState = false; }, 250);
+      if (firstId) {
+        const targetEl = document.querySelector(`details[data-id="${firstId}"]`);
+        if (targetEl) {
+          // Scroll ke elemen, kasih offset 80px untuk topbar
+          const rect = targetEl.getBoundingClientRect();
+          const top = rect.top + window.scrollY - 80;
+          window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+          console.log('🎯 Scroll ke element:', firstId, '→', top);
         }
-      };
+      } else if (targetY > 0) {
+        window.scrollTo({ top: targetY, behavior: 'instant' });
+      }
 
-      // Tunggu 2 frame supaya layout settle dulu
-      requestAnimationFrame(() => {
-        requestAnimationFrame(tryScroll);
-      });
-    } else {
-      // Tidak ada scroll target, cuma buka details
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setTimeout(() => { _isRestoringState = false; }, 250);
-        });
-      });
-    }
+      // Lepas guard
+      setTimeout(() => {
+        _isRestoringState = false;
+        console.log('✅ Restore selesai');
+      }, 400);
+    }, 200);
 
   } catch (e) {
     _isRestoringState = false;
@@ -189,9 +192,6 @@ async function initChecklist() {
 
 // ============ LOAD DATA ============
 async function loadChecklist() {
-  // ✅ Save state SEBELUM mengganti konten
-  if (typeof saveChecklistState === 'function') saveChecklistState();
-
   const el = LAYOUT.content();
   el.innerHTML = APP.loadingBox('Memuat checklist...');
 
