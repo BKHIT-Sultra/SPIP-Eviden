@@ -11,8 +11,95 @@ let unit = params.get('unit');
 let periode = params.get('periode');
 let allData = [];
 
+// ============================================
+// PERSIST STATE — Details & Scroll Position
+// ============================================
+const CHECKLIST_STATE_KEY = 'spip_checklist_state';
+let _scrollSaveTimer = null;
+
+/**
+ * Simpan state: details yang terbuka + scroll position
+ */
+function saveChecklistState() {
+  try {
+    const openDetails = [];
+    document.querySelectorAll('details[data-id]').forEach(el => {
+      if (el.open) openDetails.push(el.dataset.id);
+    });
+
+    sessionStorage.setItem(CHECKLIST_STATE_KEY, JSON.stringify({
+      open: openDetails,
+      scrollY: window.scrollY,
+      timestamp: Date.now()
+    }));
+  } catch (e) {
+    console.warn('Gagal save state:', e);
+  }
+}
+
+/**
+ * Restore state: buka details + scroll ke posisi sebelumnya
+ */
+function restoreChecklistState() {
+  try {
+    const raw = sessionStorage.getItem(CHECKLIST_STATE_KEY);
+    if (!raw) return;
+
+    const state = JSON.parse(raw);
+
+    // Expired setelah 30 menit
+    if (Date.now() - (state.timestamp || 0) > 30 * 60 * 1000) {
+      sessionStorage.removeItem(CHECKLIST_STATE_KEY);
+      return;
+    }
+
+    // Buka kembali details yang sebelumnya terbuka
+    (state.open || []).forEach(id => {
+      const el = document.querySelector(`details[data-id="${id}"]`);
+      if (el) el.open = true;
+    });
+
+    // Restore scroll position
+    if (typeof state.scrollY === 'number' && state.scrollY > 0) {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: state.scrollY, behavior: 'instant' });
+      });
+    }
+  } catch (e) {
+    console.warn('Gagal restore state:', e);
+  }
+}
+
+/**
+ * Clear state (untuk tombol reset / ganti halaman)
+ */
+function clearChecklistState() {
+  sessionStorage.removeItem(CHECKLIST_STATE_KEY);
+}
+
+/**
+ * Auto-save saat user scroll (dipasang sekali saja)
+ */
+function setupScrollSave() {
+  if (window._spip_scroll_setup) return;
+  window._spip_scroll_setup = true;
+
+  window.addEventListener('scroll', () => {
+    clearTimeout(_scrollSaveTimer);
+    _scrollSaveTimer = setTimeout(saveChecklistState, 250);
+  }, { passive: true });
+}
+
+// Expose ke window biar bisa diakses dari file lain
+window.saveChecklistState = saveChecklistState;
+window.restoreChecklistState = restoreChecklistState;
+window.clearChecklistState = clearChecklistState;
+
 // ============ INIT ============
 async function initChecklist() {
+  // ✅ Setup auto-save scroll (sekali saja)
+  setupScrollSave();
+
   console.log('🚀 INIT checklist');
 
   const user = AUTH.getUser();
