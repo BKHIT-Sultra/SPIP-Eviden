@@ -107,3 +107,51 @@ async function updateStatus(idTrans, statusSekarang) {
 
 // ============ START ============
 initChecklist();
+
+/**
+ * Toggle mark grade sebagai Selesai
+ */
+async function toggleGradeSelesai(idTrans, grade) {
+  const btn = document.querySelector(`[data-grade-btn="${idTrans}-${grade}"]`);
+  const originalHtml = btn ? btn.innerHTML : '';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `
+      <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Memproses...
+    `;
+  }
+
+  try {
+    await API.post('markGradeSelesai', {
+      id_trans: idTrans,
+      grade: grade
+    });
+
+    showToast(`Grade ${grade} berhasil diupdate`, 'success');
+
+    // Fade konten lalu reload
+    const content = document.getElementById('pageContent');
+    if (content) {
+      content.style.transition = 'opacity 0.25s';
+      content.style.opacity = '0.5';
+    }
+    setTimeout(() => {
+      if (typeof loadChecklist === 'function') loadChecklist();
+      setTimeout(() => { if (content) content.style.opacity = '1'; }, 100);
+    }, 250);
+
+  } catch (err) {
+    showToast('Gagal: ' + err.message, 'error');
+    if (btn) {
+      btn.innerHTML = originalHtml;
+      btn.disabled = false;
+    }
+  }
+}
+
+window.toggleGradeSelesai = toggleGradeSelesai;
