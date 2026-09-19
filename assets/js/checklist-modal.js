@@ -6,7 +6,7 @@
 
 // ============ STATE ============
 let modalState = {
-  mode: 'add', // 'add' | 'edit' | 'upload'
+  mode: 'add',
   idTrans: null,
   grade: null,
   idEviden: null
@@ -15,13 +15,29 @@ let modalState = {
 let hapusState = { idEviden: null, nama: null };
 let selectedFile = null;
 
-// ============ MODAL: EVIDEN (Tambah/Upload/Edit) ============
+// ============ HELPER: MARK FOR RESTORE ============
+/**
+ * Panggil ini SETIAP KALI modal dibuka.
+ * Fungsi ini akan set flag supaya setelah reload, halaman restore posisi.
+ */
+function _markForRestore() {
+  if (typeof markForRestore === 'function') {
+    markForRestore();
+  } else if (typeof window.markForRestore === 'function') {
+    window.markForRestore();
+  } else {
+    // Fallback kalau helper tidak ada
+    try { sessionStorage.setItem('spip_should_restore', 'true'); } catch (e) {}
+  }
+}
+
+// ============ MODAL: EVIDEN ============
 const ModalEviden = {
 
   // ---------- OPEN: Tambah ----------
   openTambah(idTrans, grade) {
-    // ✅ SAVE STATE DULU — sebelum body.overflow di-hidden
-    if (typeof markForRestore === 'function') markForRestore();
+    // ✅ MARK FOR RESTORE — aksi ini harus restore posisi
+    _markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     modalState = { mode: 'add', idTrans, grade, idEviden: null };
@@ -41,8 +57,7 @@ const ModalEviden = {
 
   // ---------- OPEN: Upload ----------
   openUpload(idEviden, nama) {
-    // ✅ SAVE STATE DULU
-    if (typeof markForRestore === 'function') markForRestore();
+    _markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     modalState = { mode: 'upload', idTrans: null, grade: null, idEviden };
@@ -60,8 +75,7 @@ const ModalEviden = {
 
   // ---------- OPEN: Edit ----------
   openEdit(idEviden, nama, link) {
-    // ✅ SAVE STATE DULU
-    if (typeof markForRestore === 'function') markForRestore();
+    _markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     modalState = { mode: 'edit', idTrans: null, grade: null, idEviden };
@@ -105,13 +119,11 @@ const ModalEviden = {
       return;
     }
 
-    // Mode add
     if (modalState.mode === 'add') {
       await this.saveAdd(nama, btn);
       return;
     }
 
-    // Mode upload
     if (modalState.mode === 'upload') {
       if (!selectedFile) {
         alert('Pilih file terlebih dahulu');
@@ -121,7 +133,6 @@ const ModalEviden = {
       return;
     }
 
-    // Mode edit
     if (modalState.mode === 'edit') {
       if (selectedFile) {
         await this.doUpload(btn, nama);
@@ -145,8 +156,6 @@ const ModalEviden = {
         link: ''
       });
 
-      // ⚠️ TIDAK save state di sini — sudah di-save saat modal buka
-
       this.close();
       if (typeof loadChecklist === 'function') loadChecklist();
     } catch (err) {
@@ -157,7 +166,7 @@ const ModalEviden = {
     }
   },
 
-  // ---------- Save: edit nama saja (tanpa file baru) ----------
+  // ---------- Save: edit nama saja ----------
   async saveEditOnlyNama(nama, btn) {
     btn.disabled = true;
     btn.textContent = 'Menyimpan...';
@@ -214,7 +223,6 @@ const ModalEviden = {
 
       this.updateProgress(90);
 
-      // Kalau edit, update nama juga
       if (namaBaru && modalState.mode === 'edit') {
         await API.updateEviden({
           id_eviden: modalState.idEviden,
@@ -223,8 +231,6 @@ const ModalEviden = {
       }
 
       this.updateProgress(100);
-
-      // ⚠️ TIDAK save state di sini
 
       setTimeout(() => {
         this.close();
@@ -245,6 +251,8 @@ const ModalEviden = {
   setupFileInput() {
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
+
+    if (!dropZone || !fileInput) return;
 
     dropZone.addEventListener('click', (e) => {
       if (e.target.closest('#filePreview button')) return;
@@ -336,7 +344,6 @@ const ModalEviden = {
     return (bytes / 1024 / 1024).toFixed(2) + ' MB';
   },
 
-  // ---------- SHOW / HIDE / CLOSE ----------
   show() {
     document.getElementById('modalEviden').classList.remove('hidden');
   },
@@ -354,16 +361,14 @@ const ModalEviden = {
 // ============ MODAL: HAPUS ============
 const ModalHapus = {
   open(idEviden, nama) {
-    // ✅ SAVE STATE DULU
-    if (typeof markForRestore === 'function') markForRestore();
+    // ✅ MARK FOR RESTORE
+    _markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     hapusState = { idEviden, nama };
     document.getElementById('hapusNamaText').textContent = nama;
     document.getElementById('modalHapus').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
 
-    // Reset tombol
     const btn = document.querySelector('#modalHapus button.btn-danger');
     if (btn) {
       btn.disabled = false;
@@ -383,7 +388,6 @@ const ModalHapus = {
     const btn = document.querySelector('#modalHapus button.btn-danger');
     const idEviden = hapusState.idEviden;
 
-    // Loading state di tombol
     if (btn) {
       btn.disabled = true;
       btn.innerHTML = `
@@ -396,7 +400,6 @@ const ModalHapus = {
     }
 
     try {
-      // Fade-out item sebelum hapus
       const itemEl = document.querySelector(`[data-id-trans="${idEviden}"]`);
       if (itemEl) {
         itemEl.style.transition = 'all 0.3s ease';
@@ -404,13 +407,10 @@ const ModalHapus = {
         itemEl.style.transform = 'scale(0.98)';
       }
 
-      // API call
       await API.deleteEviden({ id_eviden: idEviden });
 
       this.close();
       showToast('Dokumen berhasil dihapus', 'success');
-
-      // ⚠️ TIDAK save state di sini — sudah di-save saat modal buka
 
       setTimeout(() => {
         if (typeof loadChecklist === 'function') {
@@ -430,7 +430,6 @@ const ModalHapus = {
       }, 300);
 
     } catch (err) {
-      // Restore item state
       const itemEl = document.querySelector(`[data-id-trans="${idEviden}"]`);
       if (itemEl) {
         itemEl.style.opacity = '1';
@@ -454,7 +453,6 @@ const ModalHapus = {
 
   close() {
     document.getElementById('modalHapus').classList.add('hidden');
-    document.body.style.overflow = '';
     hapusState = { idEviden: null, nama: null };
   }
 };
@@ -466,23 +464,19 @@ const ModalPIC = {
   usersLoaded: false,
 
   async open(idTrans, picSekarang) {
-    // ✅ SAVE STATE DULU
-    if (typeof markForRestore === 'function') markForRestore();
+    _markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     this.state.idTrans = idTrans;
 
-    // Isi info
     document.getElementById('modalPICIdText').textContent = idTrans;
     document.getElementById('modalPICNama').value = picSekarang || '';
     document.getElementById('modalPICUser').value = '';
 
-    // Load daftar user kalau belum
     if (!this.usersLoaded) {
       await this.loadUsers();
     }
 
-    // Highlight user kalau cocok
     if (picSekarang) {
       const sel = document.getElementById('modalPICUser');
       for (let i = 0; i < sel.options.length; i++) {
@@ -494,7 +488,6 @@ const ModalPIC = {
     }
 
     document.getElementById('modalPIC').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
     setTimeout(() => document.getElementById('modalPICNama').focus(), 100);
   },
 
@@ -502,7 +495,6 @@ const ModalPIC = {
     try {
       const users = await API.get('getUsersList');
       const sel = document.getElementById('modalPICUser');
-
       sel.innerHTML = '<option value="">— Pilih user —</option>';
 
       users.forEach(u => {
@@ -552,12 +544,11 @@ const ModalPIC = {
 
   close() {
     document.getElementById('modalPIC').classList.add('hidden');
-    document.body.style.overflow = '';
     this.state = { idTrans: null };
   }
 };
 
-// ============ GLOBAL EVENT: ESC + Click overlay ============
+// ============ GLOBAL EVENT ============
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (!document.getElementById('modalEviden').classList.contains('hidden')) ModalEviden.close();
@@ -575,12 +566,15 @@ document.addEventListener('click', (e) => {
 });
 
 // Enter di nama
-document.getElementById('modalNama').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    ModalEviden.submit();
-  }
-});
+const _modalNamaEl = document.getElementById('modalNama');
+if (_modalNamaEl) {
+  _modalNamaEl.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      ModalEviden.submit();
+    }
+  });
+}
 
 // Setup file input
 ModalEviden.setupFileInput();
@@ -599,34 +593,25 @@ function showToast(message, type = 'info', duration = 3000) {
 
   const config = {
     success: {
-      bg: 'bg-emerald-50',
-      border: 'border-emerald-200',
-      text: 'text-emerald-800',
+      bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800',
       icon: `<svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
              </svg>`
     },
     error: {
-      bg: 'bg-rose-50',
-      border: 'border-rose-200',
-      text: 'text-rose-800',
+      bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-800',
       icon: `<svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
              </svg>`
     },
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      text: 'text-blue-800',
+      bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800',
       icon: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
              </svg>`
     }
   }[type] || {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    text: 'text-blue-800',
-    icon: ''
+    bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', icon: ''
   };
 
   const toast = document.createElement('div');
@@ -654,7 +639,7 @@ window.ModalEviden = ModalEviden;
 window.ModalHapus = ModalHapus;
 window.ModalPIC = ModalPIC;
 
-// ============ SHORTCUT untuk onclick di render ============
+// ============ SHORTCUT ============
 function openModalTambah(idTrans, grade) { ModalEviden.openTambah(idTrans, grade); }
 function openModalUpload(idEviden, nama) { ModalEviden.openUpload(idEviden, nama); }
 function openModalEdit(idEviden, nama, link) { ModalEviden.openEdit(idEviden, nama, link); }
