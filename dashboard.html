@@ -25,15 +25,11 @@
   <!-- FILTER + KONTEN                                 -->
   <!-- ============================================== -->
   <script>
-    // Render filter bar
+    // Render filter bar — hanya periode
     LAYOUT.content().innerHTML = `
       <div class="card p-4 mb-6 animate-fade-in">
         <div class="flex flex-wrap gap-3 items-end">
-          <div class="flex-1 min-w-[180px]">
-            <label class="block text-xs font-medium text-slate-500 mb-1.5">Unit Kerja</label>
-            <select id="filterUnit" class="input"></select>
-          </div>
-          <div class="flex-1 min-w-[180px]">
+          <div class="flex-1 min-w-[180px] max-w-xs">
             <label class="block text-xs font-medium text-slate-500 mb-1.5">Periode</label>
             <select id="filterPeriode" class="input"></select>
           </div>
@@ -50,22 +46,19 @@
     `;
 
     let chartStatus = null, chartKK = null;
+    let currentUnit = '';
 
     // ============ INIT ============
     async function init() {
       try {
-        const [units, periodes] = await Promise.all([
-          API.getUnits(),
-          API.getPeriodes()
-        ]);
+        // Unit: langsung dari user (hanya 1 unit)
+        const user = AUTH.getUser();
+        currentUnit = user?.kode_unit || 'BKHIT-SULTRA';
 
-        // Isi dropdown unit
-        const unitSel = document.getElementById('filterUnit');
-        unitSel.innerHTML = units.map(u =>
-          `<option value="${APP.esc(u.kode_unit)}">${APP.esc(u.nama_unit)}</option>`
-        ).join('');
+        // Load periode
+        const periodes = await API.getPeriodes();
 
-        // ✅ Isi dropdown periode — normalisasi ".0"
+        // Normalisasi periode ".0"
         const normPeriod = (v) => String(v).replace(/\.0+$/, '').trim();
 
         const periodeSel = document.getElementById('filterPeriode');
@@ -78,12 +71,6 @@
           })
           .join('');
 
-        // Default: unit dari user
-        const user = AUTH.getUser();
-        if (user && user.kode_unit) {
-          unitSel.value = user.kode_unit;
-        }
-
         loadDashboard();
       } catch (err) {
         LAYOUT.content().innerHTML = APP.errorBox(err.message);
@@ -92,33 +79,64 @@
 
     // ============ LOAD DATA ============
     async function loadDashboard() {
-      const unit = document.getElementById('filterUnit').value;
       const periode = document.getElementById('filterPeriode').value;
       const el = document.getElementById('dashContent');
 
       el.innerHTML = APP.loadingBox('Memuat dashboard...');
 
       try {
-        const data = await API.getDashboard(unit, periode);
-        renderDashboard(data, unit, periode);
+        const data = await API.getDashboard(currentUnit, periode);
+        renderDashboard(data, currentUnit, periode);
       } catch (err) {
         el.innerHTML = APP.errorBox(err.message);
       }
+    }
+
+    // ============ HELPER: KATEGORI KK ============
+    /**
+     * Kategorikan kode_kk ke KKLEAD I, II, atau III
+     * - L*  → KKLEAD I (Penetapan Tujuan)
+     * - P*  → KKLEAD III (Pencapaian Tujuan)
+     * - 1-9 → KKLEAD II (Struktur & Proses)
+     */
+    function categorizeKK(kodeKK) {
+      const kk = String(kodeKK || '').trim().toUpperCase();
+      if (kk.startsWith('L')) return 'I';
+      if (kk.startsWith('P')) return 'III';
+      return 'II';
     }
 
     // ============ RENDER ============
     function renderDashboard(data, unit, periode) {
       const el = document.getElementById('dashContent');
 
-      // Hitung total proses
       const inProgress = (data.status.Upload || 0) + (data.status.Proses || 0) + (data.status.Verifikasi || 0);
       const belum = data.status.Belum || 0;
       const selesai = data.status.Selesai || 0;
 
+      // ✅ Kategorikan per_kk jadi 3 kelompok
+      const kkleadGroups = {
+        I:   { title: 'KKLEAD I',   subtitle: 'Penetapan Tujuan',     kks: [], total: 0, selesai: 0, color: 'blue' },
+        II:  { title: 'KKLEAD II',  subtitle: 'Struktur & Proses',    kks: [], total: 0, selesai: 0, color: 'violet' },
+        III: { title: 'KKLEAD III', subtitle: 'Pencapaian Tujuan',    kks: [], total: 0, selesai: 0, color: 'emerald' }
+      };
+
+      data.per_kk.forEach(kk => {
+        const cat = categorizeKK(kk.kode_kk);
+        kkleadGroups[cat].kks.push(kk);
+        kkleadGroups[cat].total += kk.total;
+        kkleadGroups[cat].selesai += kk.selesai;
+      });
+
+      // Hitung progress per KKLEAD
+      Object.values(kkleadGroups).forEach(g => {
+        g.progress = g.total > 0 ? Math.round((g.selesai / g.total) * 100) : 0;
+      });
+
       el.innerHTML = `
         <!-- STAT CARDS -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          ${statCard('Total Parameter', data.total_parameter, 'Semua KK', 'from-blue-500 to-blue-600', '📊')}
+          ${statCard('Total Parameter', data.total_parameter, 'Semua KKLEAD', 'from-blue-500 to-blue-600', '📊')}
           ${statCard('Selesai', selesai, `${data.progress}% dari total`, 'from-emerald-500 to-emerald-600', '✓')}
           ${statCard('Sedang Proses', inProgress, 'upload · verifikasi · proses', 'from-amber-500 to-amber-600', '⏳')}
           ${statCard('Belum Mulai', belum, 'perlu tindak lanjut', 'from-rose-500 to-rose-600', '⚠')}
@@ -152,7 +170,16 @@
           </div>
         </div>
 
-        <!-- EVIDEN SUMMARY (jika ada) -->
+        <!-- ============================================ -->
+        <!-- 3 CARD KKLEAD I / II / III                   -->
+        <!-- ============================================ -->
+        <div class="grid md:grid-cols-3 gap-4 mb-6">
+          ${renderKKLeadCard('I',   kkleadGroups.I,   unit, periode)}
+          ${renderKKLeadCard('II',  kkleadGroups.II,  unit, periode)}
+          ${renderKKLeadCard('III', kkleadGroups.III, unit, periode)}
+        </div>
+
+        <!-- EVIDEN SUMMARY -->
         ${data.eviden ? `
           <div class="card p-5 mb-6 animate-fade-in">
             <div class="flex items-center justify-between mb-4">
@@ -227,19 +254,26 @@
                 ${data.per_kk.length === 0 ? `
                   <tr>
                     <td colspan="5" class="text-center py-8 text-slate-400">
-                      Belum ada data untuk unit/periode ini
+                      Belum ada data untuk periode ini
                     </td>
                   </tr>
                 ` : data.per_kk.map(kk => {
                   const progressColor = kk.progress >= 75 ? 'linear-gradient(90deg,#10b981,#059669)' :
                                         kk.progress >= 50 ? 'linear-gradient(90deg,#f59e0b,#d97706)' :
                                         'linear-gradient(90deg,#f43f5e,#e11d48)';
+                  const cat = categorizeKK(kk.kode_kk);
+                  const target = cat === 'I' ? 'kklead-1.html' :
+                                 cat === 'III' ? 'kklead-3.html' :
+                                 'checklist.html';
+                  const badgeColor = cat === 'I' ? 'bg-blue-100 text-blue-700' :
+                                     cat === 'III' ? 'bg-emerald-100 text-emerald-700' :
+                                     'bg-violet-100 text-violet-700';
                   return `
                     <tr>
                       <td>
                         <span class="inline-flex items-center gap-2">
-                          <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
-                            ${kk.kode_kk.split('.')[0]}
+                          <span class="w-8 h-8 rounded-lg ${badgeColor} flex items-center justify-center text-xs font-bold">
+                            ${cat}
                           </span>
                           <span class="font-medium text-slate-700">KK ${kk.kode_kk}</span>
                         </span>
@@ -255,7 +289,7 @@
                         </div>
                       </td>
                       <td class="text-center">
-                        <a href="checklist.html?kk=${kk.kode_kk}&unit=${unit}&periode=${periode}"
+                        <a href="${target}?kk=${kk.kode_kk}&unit=${unit}&periode=${periode}"
                            class="btn btn-ghost text-xs text-blue-700">
                           Lihat →
                         </a>
@@ -269,12 +303,57 @@
         </div>
       `;
 
-      // Render charts
-      renderCharts(data);
+      renderCharts(data, kkleadGroups);
+    }
+
+    // ============ CARD KKLEAD ============
+    function renderKKLeadCard(key, group, unit, periode) {
+      const colors = {
+        I:   { bg: 'from-blue-500 to-blue-600',     text: 'text-blue-700',     btnHref: 'kklead-1.html',  btnLabel: 'Buka KKLEAD I' },
+        II:  { bg: 'from-violet-500 to-violet-600', text: 'text-violet-700',   btnHref: 'checklist.html', btnLabel: 'Buka KKLEAD II' },
+        III: { bg: 'from-emerald-500 to-emerald-600', text: 'text-emerald-700', btnHref: 'kklead-3.html', btnLabel: 'Buka KKLEAD III' }
+      };
+      const c = colors[key];
+      const progressColor = group.progress >= 75 ? 'bg-emerald-500' :
+                            group.progress >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+
+      return `
+        <div class="card p-5 animate-fade-in">
+          <div class="flex items-start justify-between mb-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${c.bg} flex items-center justify-center text-white text-sm font-bold shadow-lg">
+              ${key}
+            </div>
+            <span class="text-xs text-slate-400 font-medium">${group.kks.length} KK</span>
+          </div>
+          <div class="font-bold text-slate-800 text-sm">${group.title}</div>
+          <div class="text-xs text-slate-500 mb-3">${group.subtitle}</div>
+
+          <div class="flex items-end justify-between mb-2">
+            <div class="text-2xl font-bold ${c.text}">${group.progress}%</div>
+            <div class="text-xs text-slate-500">${group.selesai}/${group.total}</div>
+          </div>
+
+          <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden mb-4">
+            <div class="${progressColor} h-2 rounded-full transition-all duration-500" style="width: ${group.progress}%"></div>
+          </div>
+
+          <a href="${c.btnHref}?unit=${unit}&periode=${periode}"
+             class="w-full text-xs font-medium text-slate-600 hover:text-white
+                    bg-slate-50 hover:bg-gradient-to-r hover:${c.bg}
+                    border border-slate-200 hover:border-transparent
+                    py-2 rounded-lg inline-flex items-center justify-center gap-1
+                    transition-all duration-200">
+            ${c.btnLabel}
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </a>
+        </div>
+      `;
     }
 
     // ============ CHARTS ============
-    function renderCharts(data) {
+    function renderCharts(data, kkleadGroups) {
       if (chartStatus) chartStatus.destroy();
       if (chartKK) chartKK.destroy();
 
@@ -309,23 +388,39 @@
         }
       });
 
+      // Chart per KK — tampilkan semua KK
+      const allKKs = data.per_kk.map(k => k.kode_kk);
+      const allProgress = data.per_kk.map(k => k.progress);
+
       chartKK = new Chart(document.getElementById('chartKK'), {
         type: 'bar',
         data: {
-          labels: data.per_kk.map(k => 'KK ' + k.kode_kk),
+          labels: allKKs.map(k => 'KK ' + k),
           datasets: [{
             label: 'Progress (%)',
-            data: data.per_kk.map(k => k.progress),
-            backgroundColor: '#2563eb',
+            data: allProgress,
+            backgroundColor: allKKs.map(k => {
+              const cat = categorizeKK(k);
+              if (cat === 'I') return '#3b82f6';
+              if (cat === 'III') return '#10b981';
+              return '#8b5cf6';
+            }),
             hoverBackgroundColor: '#1d4ed8',
             borderRadius: 8,
-            barThickness: 32
+            barThickness: 24
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => items[0].label
+              }
+            }
+          },
           scales: {
             y: {
               beginAtZero: true, max: 100,
@@ -334,7 +429,7 @@
             },
             x: {
               grid: { display: false },
-              ticks: { color: '#64748b', font: { size: 11 } }
+              ticks: { color: '#64748b', font: { size: 10 } }
             }
           }
         }
