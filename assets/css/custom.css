@@ -706,3 +706,32 @@ svg.w-12 { max-width: 48px; max-height: 48px; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* ============================================
+   MODAL — Tanpa Reset Body Scroll
+   ============================================ */
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Modal content — scroll sendiri kalau kepanjangan */
+.modal-content {
+  max-height: 90vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Body tetap bisa di-scroll di belakang modal
+   — tapi pointer-events di-block oleh overlay */
