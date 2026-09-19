@@ -17,14 +17,6 @@ const LAYOUT = {
       { key: 'kklead1',   href: 'kklead-1.html',  label: 'KKLEAD I',   icon: 'target', sub: 'Penetapan Tujuan' },
       { key: 'kklead2',   href: 'checklist.html', label: 'KKLEAD II',  icon: 'check',  sub: 'Struktur & Proses' },
       { key: 'kklead3',   href: 'kklead-3.html',  label: 'KKLEAD III', icon: 'award',  sub: 'Pencapaian Tujuan' },
-      { key: 'profil',    href: 'profil.html',    label: 'Profil',     icon: 'user' }
-    ];
-
-    const menus = [
-      { key: 'dashboard', href: 'dashboard.html', label: 'Dashboard',  icon: 'grid' },
-      { key: 'kklead1',   href: 'kklead-1.html',  label: 'KKLEAD I',   icon: 'target', sub: 'Penetapan Tujuan' },
-      { key: 'kklead2',   href: 'checklist.html', label: 'KKLEAD II',  icon: 'check',  sub: 'Struktur & Proses' },
-      { key: 'kklead3',   href: 'kklead-3.html',  label: 'KKLEAD III', icon: 'award',  sub: 'Pencapaian Tujuan' },
       // ✅ Menu admin — hanya muncul untuk role Admin
       ...(user && String(user.role).toLowerCase() === 'admin' ? [
         { key: 'users', href: 'master-user.html', label: 'Kelola User', icon: 'users' }
