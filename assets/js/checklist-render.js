@@ -376,27 +376,26 @@ function renderGradeCard(g, item, allEviden, selectedGrade, canEdit) {
   const isSelected = selectedGrade && g.grade === selectedGrade;
   const gradeUpper = String(g.grade).toUpperCase();
 
-  // Eviden per grade
   const ev = allEviden.filter(e => {
     const eGrade = String(e.grade || '').toUpperCase().trim();
-    const normalizedGrade = eGrade || 'A';
-    return normalizedGrade === gradeUpper;
+    return (eGrade || 'A') === gradeUpper;
   });
 
-  // ✅ Cek apakah grade ini sudah di-mark selesai
   const gradesDone = item.trans.grades_done || [];
   const isDone = gradesDone.includes(gradeUpper);
 
-  // ✅ Validasi tombol Selesai
-  const hasUraian = !!(item.trans.uraian_hasil && String(item.trans.uraian_hasil).trim());
-  const hasEviden = ev.some(e => e.status === 'terupload');
+  // ✅ Validasi
+  const uraianText = item.trans.uraian_hasil || '';
+  const hasUraian = uraianText.trim() !== '';
+  const uploadedCount = ev.filter(e => e.status === 'terupload').length;
+  const hasEviden = uploadedCount > 0;
   const canMark = canEdit && hasUraian && hasEviden;
 
-  // Alasan disabled
-  let disabledReason = '';
-  if (!canEdit) disabledReason = 'Hanya PIC yang bisa';
-  else if (!hasUraian) disabledReason = 'Isi uraian hasil dulu';
-  else if (!hasEviden) disabledReason = 'Upload minimal 1 eviden';
+  // ✅ Alasan disabled yang lebih jelas
+  let reason = '';
+  if (!canEdit) reason = 'Hanya PIC yang bisa';
+  else if (!hasUraian) reason = 'Uraian hasil belum diisi';
+  else if (!hasEviden) reason = 'Belum ada eviden terupload';
 
   const cardClass = isDone
     ? 'border-emerald-400 bg-emerald-50/40 ring-1 ring-emerald-200'
@@ -404,38 +403,58 @@ function renderGradeCard(g, item, allEviden, selectedGrade, canEdit) {
       ? 'border-blue-400 bg-blue-50/40 ring-1 ring-blue-200'
       : 'border-slate-100 bg-white';
 
-  const selectedBadge = isSelected
-    ? '<span class="badge bg-blue-100 text-blue-700 ml-1">✓ Dipilih</span>'
-    : '';
-
   const doneBadge = isDone
     ? '<span class="badge badge-selesai ml-1">✓ Selesai</span>'
     : '';
 
-  // ✅ Tombol Selesai
-  const doneBtnHtml = canEdit
-    ? `<button
-         data-grade-btn="${item.id_trans}-${gradeUpper}"
-         onclick="event.preventDefault(); event.stopPropagation(); toggleGradeSelesai('${item.id_trans}', '${gradeUpper}')"
-         ${!canMark && !isDone ? 'disabled' : ''}
-         title="${disabledReason || (isDone ? 'Klik untuk batal selesai' : 'Tandai grade ini selesai')}"
-         class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all
-                ${isDone
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                  : canMark
-                    ? 'bg-white border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700'
-                    : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60'
-                }">
-         ${isDone
-           ? `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-              </svg> Selesai`
-           : `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-              </svg> Tandai Selesai`
-         }
-       </button>`
-    : '';
+  // ============================================
+  // TOMBOL AKSI (kanan atas card)
+  // ============================================
+  let actionBtn = '';
+
+  if (canEdit) {
+    // Kalau uraian belum diisi → tombol "Isi Uraian" (paling penting)
+    if (!hasUraian) {
+      actionBtn = `
+        <button onclick="event.preventDefault(); event.stopPropagation(); isiUraian('${item.id_trans}')"
+                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg
+                       bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+          </svg>
+          Isi Uraian
+        </button>`;
+    }
+    // Kalau uraian ada tapi eviden kosong → tombol disabled dengan label jelas
+    else if (!hasEviden && !isDone) {
+      actionBtn = `
+        <button disabled
+                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg
+                       bg-slate-100 text-slate-400 cursor-not-allowed opacity-70">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+          Upload Eviden Dulu
+        </button>`;
+    }
+    // Kalau semua valid → tombol mark/unmark
+    else {
+      actionBtn = `
+        <button data-grade-btn="${item.id_trans}-${gradeUpper}"
+                onclick="event.preventDefault(); event.stopPropagation(); toggleGradeSelesai('${item.id_trans}', '${gradeUpper}')"
+                title="${isDone ? 'Klik untuk batal selesai' : 'Tandai grade ini selesai'}"
+                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all
+                       ${isDone
+                         ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                         : 'bg-white border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700'
+                       }">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+          ${isDone ? 'Selesai' : 'Tandai Selesai'}
+        </button>`;
+    }
+  }
 
   return `
     <div class="rounded-xl border ${cardClass} mb-3 overflow-hidden">
@@ -443,11 +462,11 @@ function renderGradeCard(g, item, allEviden, selectedGrade, canEdit) {
         <div class="flex items-center gap-2 flex-wrap">
           <span class="${APP.gradeClass(g.grade)}">Grade ${g.grade}</span>
           <span class="text-xs text-slate-500">Cara: ${APP.esc(g.cara_pengujian)}</span>
-          ${selectedBadge}
+          ${isSelected && !isDone ? '<span class="badge bg-blue-100 text-blue-700 ml-1">✓ Dipilih</span>' : ''}
           ${doneBadge}
-          ${ev.length > 0 ? `<span class="badge bg-emerald-100 text-emerald-700">📎 ${ev.filter(e => e.status === 'terupload').length}/${ev.length}</span>` : ''}
+          ${ev.length > 0 ? `<span class="badge bg-emerald-100 text-emerald-700">📎 ${uploadedCount}/${ev.length}</span>` : ''}
         </div>
-        ${doneBtnHtml}
+        ${actionBtn}
       </div>
 
       <div class="p-4">
@@ -463,19 +482,34 @@ function renderGradeCard(g, item, allEviden, selectedGrade, canEdit) {
         </div>
 
         <div class="mt-4">
-          <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Uraian Hasil & Eviden</div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs font-semibold text-slate-500 uppercase">Uraian Hasil & Eviden</div>
+            ${canEdit && hasUraian ? `
+              <button onclick="event.preventDefault(); event.stopPropagation(); isiUraian('${item.id_trans}')"
+                      class="text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium">
+                Edit Uraian
+              </button>
+            ` : ''}
+          </div>
 
           <div class="border border-slate-200 rounded-xl bg-white overflow-hidden">
 
-            ${(isSelected && item.trans.uraian_hasil) ? `
+            ${hasUraian ? `
               <div class="px-4 py-4 text-sm text-slate-700 leading-relaxed bg-slate-50/60 border-b border-slate-100">
-                ${APP.esc(item.trans.uraian_hasil)}
+                ${APP.esc(uraianText)}
               </div>
-            ` : (isSelected ? `
+            ` : (canEdit ? `
+              <div class="px-4 py-3 text-xs text-amber-700 bg-amber-50/60 border-b border-amber-100 flex items-center gap-2">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span><b>Uraian hasil belum diisi.</b> Klik "Isi Uraian" untuk mengisi.</span>
+              </div>
+            ` : `
               <div class="px-4 py-3 text-xs text-slate-400 italic text-center bg-slate-50/60 border-b border-slate-100">
-                Belum ada uraian hasil — isi via tombol <b>⚙ Update Status</b>
+                Belum ada uraian hasil
               </div>
-            ` : '')}
+            `)}
 
             ${ev.length > 0 ? `
               <div class="divide-y divide-slate-100">
