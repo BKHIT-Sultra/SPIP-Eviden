@@ -89,6 +89,7 @@ function renderChecklist() {
   if (picSel) {
     picSel.addEventListener('change', filterChecklist);
   }
+  
   // ✅ Pasang listener toggle untuk auto-save state
   document.querySelectorAll('details[data-id]').forEach(el => {
     el.addEventListener('toggle', () => {
