@@ -132,6 +132,10 @@ const ModalEviden = {
         jenis: 'file',
         link: ''
       });
+  
+      // ✅ Simpan state sebelum reload
+      if (typeof saveChecklistState === 'function') saveChecklistState();
+  
       this.close();
       if (typeof loadChecklist === 'function') loadChecklist();
     } catch (err) {
@@ -209,6 +213,9 @@ const ModalEviden = {
 
       this.updateProgress(100);
 
+      // ✅ Simpan state
+      if (typeof saveChecklistState === 'function') saveChecklistState();
+      
       setTimeout(() => {
         this.close();
         if (typeof loadChecklist === 'function') loadChecklist();
@@ -387,24 +394,22 @@ const ModalHapus = {
 
       // API call
       await API.deleteEviden({ id_eviden: idEviden });
-
-      // ✅ 3. Tutup modal + tampil toast
       this.close();
       showToast('Dokumen berhasil dihapus', 'success');
-
-      // ✅ 4. Delay kecil biar user lihat animasi
+      
+      // ✅ Simpan state sebelum reload
+      if (typeof saveChecklistState === 'function') saveChecklistState();
+      
       setTimeout(() => {
         if (typeof loadChecklist === 'function') {
-          // Wrapper fade-out untuk konten
           const content = document.getElementById('pageContent');
           if (content) {
             content.style.transition = 'opacity 0.25s ease';
             content.style.opacity = '0.5';
           }
-
+      
           setTimeout(() => {
             loadChecklist();
-            // Restore opacity setelah load
             setTimeout(() => {
               if (content) content.style.opacity = '1';
             }, 100);
