@@ -376,27 +376,78 @@ function renderGradeCard(g, item, allEviden, selectedGrade, canEdit) {
   const isSelected = selectedGrade && g.grade === selectedGrade;
   const gradeUpper = String(g.grade).toUpperCase();
 
+  // Eviden per grade
   const ev = allEviden.filter(e => {
     const eGrade = String(e.grade || '').toUpperCase().trim();
     const normalizedGrade = eGrade || 'A';
     return normalizedGrade === gradeUpper;
   });
 
-  const cardClass = isSelected
-    ? 'border-blue-400 bg-blue-50/40 ring-1 ring-blue-200'
-    : 'border-slate-100 bg-white';
+  // ✅ Cek apakah grade ini sudah di-mark selesai
+  const gradesDone = item.trans.grades_done || [];
+  const isDone = gradesDone.includes(gradeUpper);
+
+  // ✅ Validasi tombol Selesai
+  const hasUraian = !!(item.trans.uraian_hasil && String(item.trans.uraian_hasil).trim());
+  const hasEviden = ev.some(e => e.status === 'terupload');
+  const canMark = canEdit && hasUraian && hasEviden;
+
+  // Alasan disabled
+  let disabledReason = '';
+  if (!canEdit) disabledReason = 'Hanya PIC yang bisa';
+  else if (!hasUraian) disabledReason = 'Isi uraian hasil dulu';
+  else if (!hasEviden) disabledReason = 'Upload minimal 1 eviden';
+
+  const cardClass = isDone
+    ? 'border-emerald-400 bg-emerald-50/40 ring-1 ring-emerald-200'
+    : isSelected
+      ? 'border-blue-400 bg-blue-50/40 ring-1 ring-blue-200'
+      : 'border-slate-100 bg-white';
 
   const selectedBadge = isSelected
     ? '<span class="badge bg-blue-100 text-blue-700 ml-1">✓ Dipilih</span>'
     : '';
 
+  const doneBadge = isDone
+    ? '<span class="badge badge-selesai ml-1">✓ Selesai</span>'
+    : '';
+
+  // ✅ Tombol Selesai
+  const doneBtnHtml = canEdit
+    ? `<button
+         data-grade-btn="${item.id_trans}-${gradeUpper}"
+         onclick="event.preventDefault(); event.stopPropagation(); toggleGradeSelesai('${item.id_trans}', '${gradeUpper}')"
+         ${!canMark && !isDone ? 'disabled' : ''}
+         title="${disabledReason || (isDone ? 'Klik untuk batal selesai' : 'Tandai grade ini selesai')}"
+         class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all
+                ${isDone
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                  : canMark
+                    ? 'bg-white border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60'
+                }">
+         ${isDone
+           ? `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg> Selesai`
+           : `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg> Tandai Selesai`
+         }
+       </button>`
+    : '';
+
   return `
     <div class="rounded-xl border ${cardClass} mb-3 overflow-hidden">
-      <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-slate-50">
-        <span class="${APP.gradeClass(g.grade)}">Grade ${g.grade}</span>
-        <span class="text-xs text-slate-500">Cara: ${APP.esc(g.cara_pengujian)}</span>
-        ${selectedBadge}
-        ${ev.length > 0 ? `<span class="badge bg-emerald-100 text-emerald-700">📎 ${ev.filter(e => e.status === 'terupload').length}/${ev.length}</span>` : ''}
+      <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2 flex-wrap bg-slate-50">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="${APP.gradeClass(g.grade)}">Grade ${g.grade}</span>
+          <span class="text-xs text-slate-500">Cara: ${APP.esc(g.cara_pengujian)}</span>
+          ${selectedBadge}
+          ${doneBadge}
+          ${ev.length > 0 ? `<span class="badge bg-emerald-100 text-emerald-700">📎 ${ev.filter(e => e.status === 'terupload').length}/${ev.length}</span>` : ''}
+        </div>
+        ${doneBtnHtml}
       </div>
 
       <div class="p-4">
@@ -432,7 +483,6 @@ function renderGradeCard(g, item, allEviden, selectedGrade, canEdit) {
               </div>
             ` : ''}
 
-            <!-- ✅ Tombol Tambah hanya muncul kalau canEdit -->
             ${canEdit ? `
               <div class="p-3 bg-slate-50/50">
                 <button onclick="openModalTambah('${item.id_trans}', '${g.grade}')"
