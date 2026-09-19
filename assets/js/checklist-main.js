@@ -12,16 +12,12 @@ let periode = params.get('periode');
 let allData = [];
 
 // ============ PERSIST STATE ============
-const STATE_KEY = 'spip_checklist_state_v3';
+const STATE_KEY = 'spip_checklist_state_v4';
 let _isRestoring = false;
 let _scrollTimer = null;
-let _hasRendered = false;
 
 /**
- * Simpan state:
- * - openId: ID details yang terbuka
- * - viewportOffset: posisi top details terhadap viewport (bisa negatif)
- * - y: scroll position
+ * Simpan state: details yang terbuka + offset + scroll position
  */
 function captureState() {
   if (_isRestoring) {
@@ -30,15 +26,18 @@ function captureState() {
   }
 
   try {
-    const openEl = document.querySelector('details[data-id][open]');
+    // ✅ Pakai PROPERTY .open
+    const openIds = [];
+    document.querySelectorAll('details[data-id]').forEach(el => {
+      if (el.open === true) openIds.push(el.dataset.id);
+    });
 
-    let openId = '';
+    const openId = openIds[0] || '';
+
     let viewportOffset = 0;
-
-    if (openEl) {
-      openId = openEl.dataset.id;
-      const rect = openEl.getBoundingClientRect();
-      viewportOffset = rect.top;
+    if (openId) {
+      const el = document.querySelector(`details[data-id="${openId}"]`);
+      if (el) viewportOffset = el.getBoundingClientRect().top;
     }
 
     const y = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
@@ -51,9 +50,10 @@ function captureState() {
     }));
 
     console.log('[STATE] 💾 Captured', {
-      openId: openId ? openId.substring(0, 30) + '...' : '(none)',
+      openId: openId ? openId.substring(0, 35) + '...' : '(NONE)',
       viewportOffset: Math.round(viewportOffset),
-      y: Math.round(y)
+      y: Math.round(y),
+      totalOpen: openIds.length
     });
   } catch (e) {
     console.warn('[STATE] Capture error:', e);
@@ -67,17 +67,15 @@ function restoreState() {
   try {
     const raw = sessionStorage.getItem(STATE_KEY);
     if (!raw) {
-      console.log('[STATE] ℹ️ No state to restore');
+      console.log('[STATE] ℹ️ No state');
       return;
     }
 
     const state = JSON.parse(raw);
-    console.log('[STATE] 🔄 State loaded:', state);
+    console.log('[STATE] 🔄 Loading:', state);
 
-    // Expire 30 menit
     if (Date.now() - (state.ts || 0) > 30 * 60 * 1000) {
       sessionStorage.removeItem(STATE_KEY);
-      console.log('[STATE] ⏰ State expired');
       return;
     }
 
@@ -86,7 +84,7 @@ function restoreState() {
     const savedY = state.y || 0;
 
     if (!openId && savedY === 0) {
-      console.log('[STATE] ℹ️ State is empty, skip restore');
+      console.log('[STATE] ℹ️ State empty, skip');
       return;
     }
 
@@ -97,28 +95,23 @@ function restoreState() {
       const el = document.querySelector(`details[data-id="${openId}"]`);
       if (el) {
         el.open = true;
-        console.log('[STATE] 📂 Opened details:', openId.substring(0, 30) + '...');
-      } else {
-        console.log('[STATE] ⚠️ Details not found:', openId.substring(0, 30) + '...');
+        console.log('[STATE] 📂 Opened details');
       }
     }
 
-    // 2. Scroll setelah delay
+    // 2. Scroll dengan retry
     const doScroll = (attempt) => {
       attempt = attempt || 0;
       let targetY = savedY;
 
-      // Hitung target berdasarkan posisi element
       if (openId) {
         const el = document.querySelector(`details[data-id="${openId}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
-          const currentScrollY = window.scrollY || window.pageYOffset || 0;
-          const elementTopInDoc = rect.top + currentScrollY;
-          const computedY = elementTopInDoc - viewportOffset;
-          if (!isNaN(computedY) && computedY >= 0) {
-            targetY = computedY;
-          }
+          const currentY = window.scrollY || window.pageYOffset || 0;
+          const elemTop = rect.top + currentY;
+          const computed = elemTop - viewportOffset;
+          if (!isNaN(computed) && computed >= 0) targetY = computed;
         }
       }
 
@@ -130,12 +123,11 @@ function restoreState() {
         console.log(`[STATE] ✅ Restored → scrollY = ${Math.round(targetY)}`);
         setTimeout(() => {
           _isRestoring = false;
-          console.log('[STATE] 🔓 Guard released');
+          console.log('[STATE] 🔓 Guard off');
         }, 250);
       }
     };
 
-    // Delay supaya layout selesai
     setTimeout(() => {
       requestAnimationFrame(() => doScroll(0));
     }, 150);
@@ -146,15 +138,11 @@ function restoreState() {
   }
 }
 
-// Alias untuk backward-compat
 window.saveChecklistState = captureState;
 window.restoreChecklistState = restoreState;
 window.captureState = captureState;
 window.restoreState = restoreState;
 
-/**
- * Tracking scroll otomatis
- */
 function setupScrollTracking() {
   if (window._spip_tracking) return;
   window._spip_tracking = true;
@@ -166,24 +154,19 @@ function setupScrollTracking() {
   }, { passive: true });
 }
 
-/**
- * Tracking toggle details
- */
 function setupDetailsTracking() {
   document.addEventListener('toggle', (e) => {
-    if (e.target && e.target.tagName === 'DETAILS' && e.target.dataset.id) {
-      if (_isRestoring) {
-        console.log('[STATE] toggle ignored (restoring)');
-        return;
-      }
-      captureState();
-    }
+    if (!e.target || e.target.tagName !== 'DETAILS') return;
+    if (!e.target.dataset.id) return;
+    if (_isRestoring) return;
+
+    // Delay 50ms — pastikan property .open sudah reflect
+    setTimeout(captureState, 50);
   }, true);
 }
 
 // ============ INIT ============
 async function initChecklist() {
-  // Matikan auto scroll restore browser
   if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
   }
@@ -236,19 +219,12 @@ async function initChecklist() {
 
 // ============ LOAD DATA ============
 async function loadChecklist() {
-  // Save state HANYA kalau konten sudah ada (bukan initial load)
-  const existing = document.querySelector('details[data-id]');
-  if (existing) {
-    captureState();
-  }
-
+  // ⚠️ TIDAK capture di sini
   const el = LAYOUT.content();
   el.innerHTML = APP.loadingBox('Memuat checklist...');
 
   try {
     const data = await API.getChecklist(unit, periode, kodeKK);
-
-    // Filter: KKLEAD II = prefix angka saja
     allData = data.filter(d => /^\d/.test(String(d.kode_kk || '').trim()));
 
     console.log(`📊 KKLEAD II: ${allData.length} dari ${data.length} parameter`);
@@ -272,9 +248,7 @@ async function ambilLinkUpload(idTrans) {
 
 async function syncFolder(idTrans) {
   if (!confirm('Sync file dari folder Drive?')) return;
-
   captureState();
-
   try {
     const r = await API.syncFolder({ id_trans: idTrans });
     alert(`Selesai. ${r.added} file baru, ${r.skipped} dilewati.`);
@@ -285,14 +259,9 @@ async function syncFolder(idTrans) {
 }
 
 async function updateStatus(idTrans, statusSekarang) {
-  const status = prompt(
-    'Status baru (Belum/Upload/Selesai):',
-    statusSekarang
-  );
+  const status = prompt('Status baru (Belum/Upload/Selesai):', statusSekarang);
   if (!status) return;
-
   captureState();
-
   try {
     await API.saveStatus({ id_trans: idTrans, status: status });
     loadChecklist();
@@ -320,11 +289,7 @@ async function toggleGradeSelesai(idTrans, grade) {
   captureState();
 
   try {
-    await API.post('markGradeSelesai', {
-      id_trans: idTrans,
-      grade: grade
-    });
-
+    await API.post('markGradeSelesai', { id_trans: idTrans, grade: grade });
     showToast(`Grade ${grade} berhasil diupdate`, 'success');
 
     const content = document.getElementById('pageContent');
@@ -336,7 +301,6 @@ async function toggleGradeSelesai(idTrans, grade) {
       loadChecklist();
       setTimeout(() => { if (content) content.style.opacity = '1'; }, 100);
     }, 250);
-
   } catch (err) {
     showToast(err.message, 'error');
     if (btn) {
