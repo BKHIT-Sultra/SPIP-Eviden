@@ -220,6 +220,8 @@ async function toggleGradeSelesai(idTrans, grade) {
     });
 
     showToast(`Grade ${grade} berhasil diupdate`, 'success');
+    // ✅ Simpan state sebelum reload
+    if (typeof saveChecklistState === 'function') saveChecklistState();
 
     // Fade konten + reload
     const content = document.getElementById('pageContent');
