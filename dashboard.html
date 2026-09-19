@@ -104,12 +104,20 @@
         kkleadGroups[cat].selesai += kk.selesai;
         kkleadGroups[cat].total_items += kk.total_items || 0;
         kkleadGroups[cat].uploaded_items += kk.uploaded_items || 0;
+      
+        // ✅ Hitung KK yang selesai (semua parameter di KK tersebut selesai)
+        const kkSelesai = kk.total > 0 && kk.selesai === kk.total;
+        if (kkSelesai) {
+          kkleadGroups[cat].kk_selesai = (kkleadGroups[cat].kk_selesai || 0) + 1;
+        }
       });
-
+      
       Object.values(kkleadGroups).forEach(g => {
         g.progress = g.total_items > 0
           ? Math.round((g.uploaded_items / g.total_items) * 100)
           : 0;
+        g.total_kk = g.kks.length;
+        g.kk_selesai = g.kk_selesai || 0;
       });
 
       el.innerHTML = `
@@ -265,27 +273,43 @@
       const c = colors[key];
       const progressColor = group.progress >= 75 ? 'bg-emerald-500' :
                             group.progress >= 50 ? 'bg-amber-500' : 'bg-rose-500';
-
+    
+      // ✅ Status KK
+      const totalKK = group.total_kk || 0;
+      const selesaiKK = group.kk_selesai || 0;
+      const allKKSelesai = totalKK > 0 && selesaiKK === totalKK;
+    
       return `
         <div class="card p-5 animate-fade-in">
           <div class="flex items-start justify-between mb-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${c.bg} flex items-center justify-center text-white text-sm font-bold shadow-lg">
               ${key}
             </div>
-            <span class="text-xs text-slate-400 font-medium">${group.kks.length} KK</span>
+            <div class="text-right">
+              <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md
+                          ${allKKSelesai
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-slate-100 text-slate-600'}">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                <span class="text-xs font-bold">${selesaiKK}/${totalKK} KK</span>
+              </div>
+            </div>
           </div>
           <div class="font-bold text-slate-800 text-sm">${group.title}</div>
           <div class="text-xs text-slate-500 mb-3">${group.subtitle}</div>
-
+    
           <div class="flex items-end justify-between mb-2">
             <div class="text-2xl font-bold ${c.text}">${group.progress}%</div>
             <div class="text-xs text-slate-500">${group.uploaded_items}/${group.total_items} item</div>
           </div>
-
+    
           <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden mb-4">
             <div class="${progressColor} h-2 rounded-full transition-all duration-500" style="width: ${group.progress}%"></div>
           </div>
-
+    
           <a href="${c.btnHref}?unit=${unit}&periode=${periode}"
              class="w-full text-xs font-medium text-slate-600 hover:text-white
                     bg-slate-50 hover:bg-gradient-to-r hover:${c.bg}
