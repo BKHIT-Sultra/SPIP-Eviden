@@ -306,19 +306,6 @@ function renderItem(item) {
                     <span class="hidden sm:inline">${t.pic ? 'Ubah PIC' : 'Set PIC'}</span>
                   </button>
 
-                  <button onclick="ambilLinkUpload('${item.id_trans}')"
-                          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
-                                 bg-white border border-slate-200 text-slate-600
-                                 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
-                                 active:scale-95 transition-all duration-150"
-                          title="Ambil Link Upload">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                    </svg>
-                    <span class="hidden sm:inline">Ambil Link</span>
-                  </button>
-
                   <button onclick="syncFolder('${item.id_trans}')"
                           class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
                                  bg-white border border-slate-200 text-slate-600
@@ -410,25 +397,40 @@ function renderGradeCard(g, item, allEviden, selectedGrade, canEdit) {
     ? '<span class="badge badge-selesai ml-1">✓ Selesai</span>'
     : '';
 
-  // ✅ TOMBOL SELESAI — hanya muncul kalau canEdit
+  // ✅ TOMBOL SELESAI + AMBIL LINK — hanya muncul kalau canEdit
   const doneBtnHtml = canEdit
-    ? `<button
-         data-grade-btn="${item.id_trans}-${gradeUpper}"
-         onclick="event.preventDefault(); event.stopPropagation(); toggleGradeSelesai('${item.id_trans}', '${gradeUpper}')"
-         ${!isLengkap && !isDone ? 'disabled' : ''}
-         title="${reason || (isDone ? 'Klik untuk batal selesai' : 'Tandai grade ini selesai')}"
-         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all
-                ${isDone
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                  : isLengkap
-                    ? 'bg-white border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700'
-                    : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-70'
-                }">
-         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-         </svg>
-         ${isDone ? 'Selesai' : 'Tandai Selesai'}
-       </button>`
+    ? `<div class="flex items-center gap-2">
+         <button
+           data-grade-btn="${item.id_trans}-${gradeUpper}"
+           onclick="event.preventDefault(); event.stopPropagation(); toggleGradeSelesai('${item.id_trans}', '${gradeUpper}')"
+           ${!isLengkap && !isDone ? 'disabled' : ''}
+           title="${reason || (isDone ? 'Klik untuk batal selesai' : 'Tandai grade ini selesai')}"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all
+                  ${isDone
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                    : isLengkap
+                      ? 'bg-white border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700'
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-70'
+                  }">
+           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+           </svg>
+           ${isDone ? 'Selesai' : 'Tandai Selesai'}
+         </button>
+  
+         <button onclick="event.preventDefault(); event.stopPropagation(); ambilLinkUpload('${item.id_trans}', '${gradeUpper}')"
+                 class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg
+                        bg-white border border-slate-200 text-slate-600
+                        hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700
+                        active:scale-95 transition-all duration-150"
+                 title="Buka folder upload untuk Grade ${gradeUpper}">
+           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+             <path stroke-linecap="round" stroke-linejoin="round"
+                   d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+           </svg>
+           Ambil Link
+         </button>
+       </div>`
     : '';
 
   return `
