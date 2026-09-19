@@ -16,11 +16,15 @@ let allData = [];
 // ============================================
 const CHECKLIST_STATE_KEY = 'spip_checklist_state';
 let _scrollSaveTimer = null;
+let _isRestoringState = false;
 
 /**
  * Simpan state: details yang terbuka + scroll position
  */
 function saveChecklistState() {
+  // ✅ Skip kalau sedang restore — biar tidak nimpa scrollY dengan 0
+  if (_isRestoringState) return;
+
   try {
     const openDetails = [];
     document.querySelectorAll('details[data-id]').forEach(el => {
@@ -53,44 +57,58 @@ function restoreChecklistState() {
       return;
     }
 
-    // Buka kembali details yang sebelumnya terbuka
+    // ✅ Set flag supaya toggle event tidak menimpa state
+    _isRestoringState = true;
+
+    // Buka kembali details
     (state.open || []).forEach(id => {
       const el = document.querySelector(`details[data-id="${id}"]`);
       if (el) el.open = true;
     });
 
-    // Restore scroll position
-    if (typeof state.scrollY === 'number' && state.scrollY > 0) {
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: state.scrollY, behavior: 'instant' });
-      });
-    }
+    const targetScrollY = state.scrollY || 0;
+
+    // Delay biar semua details terbuka dulu, baru scroll
+    setTimeout(() => {
+      if (targetScrollY > 0) {
+        window.scrollTo({ top: targetScrollY, behavior: 'instant' });
+      }
+      // Reset flag setelah 300ms
+      setTimeout(() => {
+        _isRestoringState = false;
+      }, 300);
+    }, 100);
+
   } catch (e) {
+    _isRestoringState = false;
     console.warn('Gagal restore state:', e);
   }
 }
 
 /**
- * Clear state (untuk tombol reset / ganti halaman)
+ * Clear state
  */
 function clearChecklistState() {
   sessionStorage.removeItem(CHECKLIST_STATE_KEY);
 }
 
 /**
- * Auto-save saat user scroll (dipasang sekali saja)
+ * Auto-save saat user scroll
  */
 function setupScrollSave() {
   if (window._spip_scroll_setup) return;
   window._spip_scroll_setup = true;
 
   window.addEventListener('scroll', () => {
+    // ✅ Skip kalau sedang restore
+    if (_isRestoringState) return;
+
     clearTimeout(_scrollSaveTimer);
     _scrollSaveTimer = setTimeout(saveChecklistState, 250);
   }, { passive: true });
 }
 
-// Expose ke window biar bisa diakses dari file lain
+// Expose ke window
 window.saveChecklistState = saveChecklistState;
 window.restoreChecklistState = restoreChecklistState;
 window.clearChecklistState = clearChecklistState;
