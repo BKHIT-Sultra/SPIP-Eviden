@@ -21,11 +21,7 @@
     LAYOUT.render('dashboard');
   </script>
 
-  <!-- ============================================== -->
-  <!-- FILTER + KONTEN                                 -->
-  <!-- ============================================== -->
   <script>
-    // Render filter bar — hanya periode
     LAYOUT.content().innerHTML = `
       <div class="card p-4 mb-6 animate-fade-in">
         <div class="flex flex-wrap gap-3 items-end">
@@ -45,24 +41,19 @@
       <div id="dashContent"></div>
     `;
 
-    let chartStatus = null, chartKK = null;
+    let chartStatus = null, chartKK = null, chartGrade = null;
     let currentUnit = '';
 
     // ============ INIT ============
     async function init() {
       try {
-        // Unit: langsung dari user (hanya 1 unit)
         const user = AUTH.getUser();
         currentUnit = user?.kode_unit || 'BKHIT-SULTRA';
 
-        // Load periode
         const periodes = await API.getPeriodes();
-
-        // Normalisasi periode ".0"
         const normPeriod = (v) => String(v).replace(/\.0+$/, '').trim();
 
-        const periodeSel = document.getElementById('filterPeriode');
-        periodeSel.innerHTML = periodes
+        document.getElementById('filterPeriode').innerHTML = periodes
           .filter(p => String(p.status || '').toLowerCase().trim() === 'aktif')
           .map(p => {
             const clean = normPeriod(p.periode);
@@ -77,11 +68,9 @@
       }
     }
 
-    // ============ LOAD DATA ============
     async function loadDashboard() {
       const periode = document.getElementById('filterPeriode').value;
       const el = document.getElementById('dashContent');
-
       el.innerHTML = APP.loadingBox('Memuat dashboard...');
 
       try {
@@ -92,33 +81,20 @@
       }
     }
 
-    // ============ HELPER: KATEGORI KK ============
-    /**
-     * Kategorikan kode_kk ke KKLEAD I, II, atau III
-     * - L*  → KKLEAD I (Penetapan Tujuan)
-     * - P*  → KKLEAD III (Pencapaian Tujuan)
-     * - 1-9 → KKLEAD II (Struktur & Proses)
-     */
-    function categorizeKK(kodeKK) {
-      const kk = String(kodeKK || '').trim().toUpperCase();
-      if (kk.startsWith('L')) return 'I';
-      if (kk.startsWith('P')) return 'III';
-      return 'II';
-    }
-
     // ============ RENDER ============
     function renderDashboard(data, unit, periode) {
       const el = document.getElementById('dashContent');
 
-      const inProgress = (data.status.Upload || 0) + (data.status.Proses || 0) + (data.status.Verifikasi || 0);
-      const belum = data.status.Belum || 0;
-      const selesai = data.status.Selesai || 0;
+      const selesai = data.selesai_parameter || 0;
+      const upload  = data.status.Upload || 0;
+      const belum   = data.status.Belum || 0;
+      const total   = data.total_parameter || 0;
 
-      // ✅ Kategorikan per_kk jadi 3 kelompok
+      // Kategorikan KK
       const kkleadGroups = {
-        I:   { title: 'KKLEAD I',   subtitle: 'Penetapan Tujuan',     kks: [], total: 0, selesai: 0, color: 'blue' },
-        II:  { title: 'KKLEAD II',  subtitle: 'Struktur & Proses',    kks: [], total: 0, selesai: 0, color: 'violet' },
-        III: { title: 'KKLEAD III', subtitle: 'Pencapaian Tujuan',    kks: [], total: 0, selesai: 0, color: 'emerald' }
+        I:   { title: 'KKLEAD I',  subtitle: 'Penetapan Tujuan',  kks: [], total: 0, selesai: 0, total_items: 0, uploaded_items: 0 },
+        II:  { title: 'KKLEAD II', subtitle: 'Struktur & Proses', kks: [], total: 0, selesai: 0, total_items: 0, uploaded_items: 0 },
+        III: { title: 'KKLEAD III',subtitle: 'Pencapaian Tujuan', kks: [], total: 0, selesai: 0, total_items: 0, uploaded_items: 0 }
       };
 
       data.per_kk.forEach(kk => {
@@ -126,29 +102,33 @@
         kkleadGroups[cat].kks.push(kk);
         kkleadGroups[cat].total += kk.total;
         kkleadGroups[cat].selesai += kk.selesai;
+        kkleadGroups[cat].total_items += kk.total_items || 0;
+        kkleadGroups[cat].uploaded_items += kk.uploaded_items || 0;
       });
 
-      // Hitung progress per KKLEAD
       Object.values(kkleadGroups).forEach(g => {
-        g.progress = g.total > 0 ? Math.round((g.selesai / g.total) * 100) : 0;
+        g.progress = g.total_items > 0
+          ? Math.round((g.uploaded_items / g.total_items) * 100)
+          : 0;
       });
 
       el.innerHTML = `
         <!-- STAT CARDS -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          ${statCard('Total Parameter', data.total_parameter, 'Semua KKLEAD', 'from-blue-500 to-blue-600', '📊')}
-          ${statCard('Selesai', selesai, `${data.progress}% dari total`, 'from-emerald-500 to-emerald-600', '✓')}
-          ${statCard('Sedang Proses', inProgress, 'upload · verifikasi · proses', 'from-amber-500 to-amber-600', '⏳')}
-          ${statCard('Belum Mulai', belum, 'perlu tindak lanjut', 'from-rose-500 to-rose-600', '⚠')}
+          ${statCard('Total Parameter', total, 'Semua KKLEAD', 'from-blue-500 to-blue-600', '📊')}
+          ${statCard('Selesai', selesai, `${data.progress}% eviden lengkap`, 'from-emerald-500 to-emerald-600', '✓')}
+          ${statCard('Upload Sebagian', upload, 'perlu ditindaklanjuti', 'from-amber-500 to-amber-600', '📤')}
+          ${statCard('Belum Mulai', belum, 'belum ada eviden', 'from-rose-500 to-rose-600', '⚠')}
         </div>
 
-        <!-- PROGRESS KESELURUHAN -->
+        <!-- PROGRESS KESELURUHAN (berbasis eviden) -->
         <div class="card p-6 mb-6 animate-fade-in">
           <div class="flex flex-wrap justify-between items-center gap-3 mb-3">
             <div>
               <h2 class="font-bold text-slate-800">Progress Keseluruhan</h2>
               <p class="text-xs text-slate-500 mt-0.5">
-                ${selesai} dari ${data.total_parameter} parameter selesai
+                ${data.uploaded_items || 0} dari ${data.total_items || 0} item lampiran terupload
+                · ${selesai} dari ${total} parameter selesai
               </p>
             </div>
             <div class="text-right">
@@ -162,55 +142,22 @@
 
           <div class="flex flex-wrap gap-2">
             ${statusChip('Selesai', selesai, 'bg-emerald-100 text-emerald-700')}
-            ${statusChip('Verifikasi', data.status.Verifikasi || 0, 'bg-violet-100 text-violet-700')}
-            ${statusChip('Upload', data.status.Upload || 0, 'bg-amber-100 text-amber-700')}
-            ${statusChip('Proses', data.status.Proses || 0, 'bg-blue-100 text-blue-700')}
+            ${statusChip('Upload', upload, 'bg-amber-100 text-amber-700')}
             ${statusChip('Belum', belum, 'bg-slate-100 text-slate-700')}
-            ${statusChip('Revisi', data.status.Revisi || 0, 'bg-rose-100 text-rose-700')}
           </div>
         </div>
 
-        <!-- ============================================ -->
-        <!-- 3 CARD KKLEAD I / II / III                   -->
-        <!-- ============================================ -->
+        <!-- 3 CARD KKLEAD -->
         <div class="grid md:grid-cols-3 gap-4 mb-6">
           ${renderKKLeadCard('I',   kkleadGroups.I,   unit, periode)}
           ${renderKKLeadCard('II',  kkleadGroups.II,  unit, periode)}
           ${renderKKLeadCard('III', kkleadGroups.III, unit, periode)}
         </div>
 
-        <!-- EVIDEN SUMMARY -->
-        ${data.eviden ? `
-          <div class="card p-5 mb-6 animate-fade-in">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <h2 class="font-bold text-slate-800 flex items-center gap-2">
-                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-                  </svg>
-                  Ringkasan Eviden
-                </h2>
-                <p class="text-xs text-slate-500 mt-0.5">Status kelengkapan dokumen pendukung</p>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-4">
-              <div class="text-center p-4 rounded-xl bg-blue-50 border border-blue-100">
-                <div class="text-2xl font-bold text-blue-700">${data.eviden.total || 0}</div>
-                <div class="text-xs text-blue-600 mt-1 font-medium">Total Item</div>
-              </div>
-              <div class="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                <div class="text-2xl font-bold text-emerald-700">${data.eviden.terupload || 0}</div>
-                <div class="text-xs text-emerald-600 mt-1 font-medium">Terupload</div>
-              </div>
-              <div class="text-center p-4 rounded-xl bg-rose-50 border border-rose-100">
-                <div class="text-2xl font-bold text-rose-700">${data.eviden.belum || 0}</div>
-                <div class="text-xs text-rose-600 mt-1 font-medium">Belum Upload</div>
-              </div>
-            </div>
-          </div>
-        ` : ''}
+        <!-- ============================================ -->
+        <!-- CARD KHUSUS KKLEAD II — Distribusi Grade      -->
+        <!-- ============================================ -->
+        ${renderGradeDistribution(data.grade_distribution || {})}
 
         <!-- CHARTS -->
         <div class="grid lg:grid-cols-3 gap-6 mb-6">
@@ -221,7 +168,7 @@
             </div>
           </div>
           <div class="card p-5 lg:col-span-2 animate-fade-in-delay-2">
-            <h2 class="font-bold text-slate-800 mb-3 text-sm">Progress per Kelompok Kriteria</h2>
+            <h2 class="font-bold text-slate-800 mb-3 text-sm">Progress per KK</h2>
             <div style="height: 220px;">
               <canvas id="chartKK"></canvas>
             </div>
@@ -233,18 +180,17 @@
           <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
             <div>
               <h2 class="font-bold text-slate-800">Rincian per Kelompok Kriteria</h2>
-              <p class="text-xs text-slate-500 mt-0.5">Klik "Lihat" untuk detail parameter</p>
+              <p class="text-xs text-slate-500 mt-0.5">Progress dihitung dari item lampiran yang terupload</p>
             </div>
-            <div class="text-xs text-slate-500">
-              Total ${data.per_kk.length} KK
-            </div>
+            <div class="text-xs text-slate-500">Total ${data.per_kk.length} KK</div>
           </div>
           <div class="overflow-x-auto">
             <table class="table-modern">
               <thead>
                 <tr>
                   <th>Kode</th>
-                  <th class="text-center">Total</th>
+                  <th class="text-center">Parameter</th>
+                  <th class="text-center">Item Lampiran</th>
                   <th class="text-center">Selesai</th>
                   <th>Progress</th>
                   <th class="text-center">Aksi</th>
@@ -253,7 +199,7 @@
               <tbody>
                 ${data.per_kk.length === 0 ? `
                   <tr>
-                    <td colspan="5" class="text-center py-8 text-slate-400">
+                    <td colspan="6" class="text-center py-8 text-slate-400">
                       Belum ada data untuk periode ini
                     </td>
                   </tr>
@@ -279,6 +225,9 @@
                         </span>
                       </td>
                       <td class="text-center font-medium">${kk.total}</td>
+                      <td class="text-center text-xs text-slate-500">
+                        ${kk.uploaded_items || 0}/${kk.total_items || 0}
+                      </td>
                       <td class="text-center font-medium text-emerald-600">${kk.selesai}</td>
                       <td>
                         <div class="flex items-center gap-3 max-w-xs">
@@ -309,9 +258,9 @@
     // ============ CARD KKLEAD ============
     function renderKKLeadCard(key, group, unit, periode) {
       const colors = {
-        I:   { bg: 'from-blue-500 to-blue-600',     text: 'text-blue-700',     btnHref: 'kklead-1.html',  btnLabel: 'Buka KKLEAD I' },
-        II:  { bg: 'from-violet-500 to-violet-600', text: 'text-violet-700',   btnHref: 'checklist.html', btnLabel: 'Buka KKLEAD II' },
-        III: { bg: 'from-emerald-500 to-emerald-600', text: 'text-emerald-700', btnHref: 'kklead-3.html', btnLabel: 'Buka KKLEAD III' }
+        I:   { bg: 'from-blue-500 to-blue-600',       text: 'text-blue-700',     btnHref: 'kklead-1.html' },
+        II:  { bg: 'from-violet-500 to-violet-600',   text: 'text-violet-700',   btnHref: 'checklist.html' },
+        III: { bg: 'from-emerald-500 to-emerald-600', text: 'text-emerald-700',  btnHref: 'kklead-3.html' }
       };
       const c = colors[key];
       const progressColor = group.progress >= 75 ? 'bg-emerald-500' :
@@ -330,7 +279,7 @@
 
           <div class="flex items-end justify-between mb-2">
             <div class="text-2xl font-bold ${c.text}">${group.progress}%</div>
-            <div class="text-xs text-slate-500">${group.selesai}/${group.total}</div>
+            <div class="text-xs text-slate-500">${group.uploaded_items}/${group.total_items} item</div>
           </div>
 
           <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden mb-4">
@@ -343,7 +292,7 @@
                     border border-slate-200 hover:border-transparent
                     py-2 rounded-lg inline-flex items-center justify-center gap-1
                     transition-all duration-200">
-            ${c.btnLabel}
+            Buka ${group.title}
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
@@ -352,25 +301,89 @@
       `;
     }
 
-    // ============ CHARTS ============
+    // ============ CARD DISTRIBUSI GRADE (KKLEAD II) ============
+    function renderGradeDistribution(dist) {
+      const gradeInfo = {
+        'A': { label: 'Grade A', color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+        'B': { label: 'Grade B', color: 'bg-blue-500',    text: 'text-blue-700',    bg: 'bg-blue-50',    border: 'border-blue-200' },
+        'C': { label: 'Grade C', color: 'bg-amber-500',   text: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
+        'D': { label: 'Grade D', color: 'bg-orange-500',  text: 'text-orange-700',  bg: 'bg-orange-50',  border: 'border-orange-200' },
+        'E': { label: 'Grade E', color: 'bg-rose-500',    text: 'text-rose-700',    bg: 'bg-rose-50',    border: 'border-rose-200' },
+        'Belum Set': { label: 'Belum Set Grade', color: 'bg-slate-400', text: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200' }
+      };
+
+      // Urutkan E → A (user minta "dari grade e hingga a")
+      const order = ['E', 'D', 'C', 'B', 'A', 'Belum Set'];
+
+      const totalParam = Object.values(dist).reduce((sum, g) => sum + (g.total_param || 0), 0);
+      const totalSelesai = Object.values(dist).reduce((sum, g) => sum + (g.selesai_param || 0), 0);
+
+      const cards = order.map(g => {
+        const info = gradeInfo[g];
+        const d = dist[g] || { total_param: 0, selesai_param: 0, total_items: 0, uploaded_items: 0, progress: 0 };
+
+        return `
+          <div class="rounded-xl border ${info.border} ${info.bg} p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold ${info.text} uppercase tracking-wide">${info.label}</span>
+              <span class="w-2 h-2 rounded-full ${info.color}"></span>
+            </div>
+            <div class="flex items-end gap-2 mb-1">
+              <div class="text-2xl font-bold ${info.text}">${d.total_param}</div>
+              <div class="text-xs text-slate-500 mb-1">parameter</div>
+            </div>
+            <div class="text-xs text-slate-500 mb-2">
+              ${d.selesai_param} selesai · ${d.uploaded_items}/${d.total_items} item
+            </div>
+            <div class="w-full bg-white rounded-full h-1.5 overflow-hidden">
+              <div class="${info.color} h-1.5 rounded-full" style="width: ${d.progress}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="card p-5 mb-6 animate-fade-in">
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold">II</span>
+                Distribusi Grade — KKLEAD II
+              </h2>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Parameter KKLEAD II dikelompokkan berdasarkan grade yang dipilih
+              </p>
+            </div>
+            <div class="text-right">
+              <div class="text-2xl font-bold text-violet-700">${totalSelesai}/${totalParam}</div>
+              <div class="text-xs text-slate-500">parameter selesai</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            ${cards}
+          </div>
+        </div>
+      `;
+    }
+
+    // ============ CHART ============
     function renderCharts(data, kkleadGroups) {
       if (chartStatus) chartStatus.destroy();
       if (chartKK) chartKK.destroy();
 
+      // Doughnut Status
       chartStatus = new Chart(document.getElementById('chartStatus'), {
         type: 'doughnut',
         data: {
-          labels: ['Selesai', 'Verifikasi', 'Upload', 'Proses', 'Belum', 'Revisi'],
+          labels: ['Selesai', 'Upload', 'Belum'],
           datasets: [{
             data: [
               data.status.Selesai || 0,
-              data.status.Verifikasi || 0,
               data.status.Upload || 0,
-              data.status.Proses || 0,
-              data.status.Belum || 0,
-              data.status.Revisi || 0
+              data.status.Belum || 0
             ],
-            backgroundColor: ['#10b981', '#8b5cf6', '#f59e0b', '#3b82f6', '#94a3b8', '#f43f5e'],
+            backgroundColor: ['#10b981', '#f59e0b', '#94a3b8'],
             borderWidth: 0,
             spacing: 3
           }]
@@ -388,7 +401,7 @@
         }
       });
 
-      // Chart per KK — tampilkan semua KK
+      // Bar Chart per KK
       const allKKs = data.per_kk.map(k => k.kode_kk);
       const allProgress = data.per_kk.map(k => k.progress);
 
@@ -413,14 +426,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: (items) => items[0].label
-              }
-            }
-          },
+          plugins: { legend: { display: false } },
           scales: {
             y: {
               beginAtZero: true, max: 100,
@@ -436,7 +442,14 @@
       });
     }
 
-    // ============ HELPER ============
+    // ============ HELPERS ============
+    function categorizeKK(kodeKK) {
+      const kk = String(kodeKK || '').trim().toUpperCase();
+      if (kk.startsWith('L')) return 'I';
+      if (kk.startsWith('P')) return 'III';
+      return 'II';
+    }
+
     function statCard(label, value, sub, gradient, icon) {
       return `
         <div class="card p-5 animate-fade-in">
@@ -457,7 +470,6 @@
       </span>`;
     }
 
-    // ============ START ============
     init();
   </script>
 
