@@ -21,6 +21,7 @@ const ModalEviden = {
   // ---------- OPEN: Tambah ----------
   openTambah(idTrans, grade) {
     // ✅ SAVE STATE DULU — sebelum body.overflow di-hidden
+    if (typeof markForRestore === 'function') markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     modalState = { mode: 'add', idTrans, grade, idEviden: null };
@@ -41,6 +42,7 @@ const ModalEviden = {
   // ---------- OPEN: Upload ----------
   openUpload(idEviden, nama) {
     // ✅ SAVE STATE DULU
+    if (typeof markForRestore === 'function') markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     modalState = { mode: 'upload', idTrans: null, grade: null, idEviden };
@@ -352,6 +354,7 @@ const ModalEviden = {
 const ModalHapus = {
   open(idEviden, nama) {
     // ✅ SAVE STATE DULU
+    if (typeof markForRestore === 'function') markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     hapusState = { idEviden, nama };
@@ -463,6 +466,7 @@ const ModalPIC = {
 
   async open(idTrans, picSekarang) {
     // ✅ SAVE STATE DULU
+    if (typeof markForRestore === 'function') markForRestore();
     if (typeof saveChecklistState === 'function') saveChecklistState();
 
     this.state.idTrans = idTrans;
