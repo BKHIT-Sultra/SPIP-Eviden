@@ -22,8 +22,11 @@ let _isRestoringState = false;
  * Simpan state: details yang terbuka + scroll position
  */
 function saveChecklistState() {
-  // ✅ Skip kalau sedang restore — biar tidak nimpa scrollY dengan 0
+  // ✅ Skip kalau sedang restore
   if (_isRestoringState) return;
+
+  // ✅ Skip kalau window lagi scroll 0 tapi ada item terbuka (kemungkinan DOM reset)
+  const openCount = document.querySelectorAll('details[data-id][open]').length;
 
   try {
     const openDetails = [];
@@ -33,7 +36,7 @@ function saveChecklistState() {
 
     sessionStorage.setItem(CHECKLIST_STATE_KEY, JSON.stringify({
       open: openDetails,
-      scrollY: window.scrollY,
+      scrollY: window.scrollY || window.pageYOffset || 0,
       timestamp: Date.now()
     }));
   } catch (e) {
@@ -51,33 +54,56 @@ function restoreChecklistState() {
 
     const state = JSON.parse(raw);
 
-    // Expired setelah 30 menit
     if (Date.now() - (state.timestamp || 0) > 30 * 60 * 1000) {
       sessionStorage.removeItem(CHECKLIST_STATE_KEY);
       return;
     }
 
-    // ✅ Set flag supaya toggle event tidak menimpa state
+    const targetScrollY = state.scrollY || 0;
+    const openIds = state.open || [];
+
+    if (openIds.length === 0 && targetScrollY === 0) return;
+
     _isRestoringState = true;
 
-    // Buka kembali details
-    (state.open || []).forEach(id => {
+    // Buka details
+    openIds.forEach(id => {
       const el = document.querySelector(`details[data-id="${id}"]`);
       if (el) el.open = true;
     });
 
-    const targetScrollY = state.scrollY || 0;
+    // ✅ Multi-frame scroll dengan retry
+    if (targetScrollY > 0) {
+      let attempts = 0;
+      const maxAttempts = 8;
 
-    // Delay biar semua details terbuka dulu, baru scroll
-    setTimeout(() => {
-      if (targetScrollY > 0) {
-        window.scrollTo({ top: targetScrollY, behavior: 'instant' });
-      }
-      // Reset flag setelah 300ms
-      setTimeout(() => {
-        _isRestoringState = false;
-      }, 300);
-    }, 100);
+      const tryScroll = () => {
+        attempts++;
+        window.scrollTo(0, targetScrollY);
+
+        const currentY = window.scrollY || window.pageYOffset || 0;
+        const diff = Math.abs(currentY - targetScrollY);
+
+        if (attempts < maxAttempts && diff > 30) {
+          requestAnimationFrame(tryScroll);
+        } else {
+          // Selesai — tunggu sebentar baru lepas guard
+          setTimeout(() => { _isRestoringState = false; }, 250);
+        }
+      };
+
+      // Tunggu 2 frame supaya layout settle dulu
+      requestAnimationFrame(() => {
+        requestAnimationFrame(tryScroll);
+      });
+    } else {
+      // Tidak ada scroll target, cuma buka details
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setTimeout(() => { _isRestoringState = false; }, 250);
+        });
+      });
+    }
 
   } catch (e) {
     _isRestoringState = false;
@@ -163,6 +189,9 @@ async function initChecklist() {
 
 // ============ LOAD DATA ============
 async function loadChecklist() {
+  // ✅ Save state SEBELUM mengganti konten
+  if (typeof saveChecklistState === 'function') saveChecklistState();
+
   const el = LAYOUT.content();
   el.innerHTML = APP.loadingBox('Memuat checklist...');
 
