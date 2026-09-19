@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kelola User — SPIP Eviden</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/custom.css">
+</head>
+<body>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/layout.js"></script>
+
+  <script>
+    AUTH.requireLogin();
+    LAYOUT.render('users');
+
+    // Cek role — hanya Admin
+    const _currentUser = AUTH.getUser();
+    if (!_currentUser || String(_currentUser.role).toLowerCase() !== 'admin') {
+      LAYOUT.content().innerHTML = `
+        <div class="card p-12 text-center">
+          <div class="text-6xl mb-4">🔒</div>
+          <div class="text-lg font-semibold text-slate-800 mb-2">Akses Ditolak</div>
+          <div class="text-sm text-slate-500">Halaman ini hanya untuk Admin.</div>
+        </div>
+      `;
+    }
+  </script>
+
+  <!-- ============================================== -->
+  <!-- MODAL: USER (Tambah / Edit)                     -->
+  <!-- ============================================== -->
+  <div id="modalUser" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full modal-content">
+
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 id="modalUserTitle" class="font-bold text-lg text-slate-800">Tambah User</h3>
+        <button onclick="closeModalUser()" class="btn btn-ghost p-1.5">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Username <span class="text-rose-500">*</span>
+          </label>
+          <input type="text" id="userUsername" class="input"
+                 placeholder="mis. budi" autocomplete="off"/>
+          <div class="text-xs text-slate-400 mt-1">
+            Tanpa spasi, huruf kecil semua
+          </div>
+        </div>
+
+        <div id="passwordGroup">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Password <span class="text-rose-500">*</span>
+          </label>
+          <input type="text" id="userPassword" class="input"
+                 placeholder="min. 6 karakter" autocomplete="new-password"/>
+          <div class="text-xs text-slate-400 mt-1">
+            Password default — user bisa ganti setelah login
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Nama Lengkap <span class="text-rose-500">*</span>
+          </label>
+          <input type="text" id="userNama" class="input"
+                 placeholder="mis. Budi Santoso"/>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Role <span class="text-rose-500">*</span>
+          </label>
+          <select id="userRole" class="input">
+            <option value="">— Pilih role —</option>
+            <option value="Admin">Admin — Full access</option>
+            <option value="Unit">Unit — Hanya parameter PIC-nya</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Unit Kerja
+          </label>
+          <select id="userUnit" class="input">
+            <option value="">— Pilih unit (opsional) —</option>
+          </select>
+        </div>
+
+      </div>
+
+      <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="closeModalUser()" class="btn btn-secondary text-sm">Batal</button>
+        <button id="modalUserSubmitBtn" onclick="submitUser()" class="btn btn-primary text-sm">
+          Simpan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: HAPUS USER                               -->
+  <!-- ============================================== -->
+  <div id="modalHapusUser" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 modal-content">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="font-semibold text-slate-800">Hapus User?</div>
+          <div class="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan.</div>
+        </div>
+      </div>
+      <div class="bg-slate-50 border rounded-lg p-3 text-sm mb-4">
+        <div class="text-xs text-slate-500 mb-1">Username:</div>
+        <div id="hapusUserText" class="font-medium text-slate-800 break-all">-</div>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button onclick="closeModalHapusUser()" class="btn btn-secondary text-sm">Batal</button>
+        <button id="btnHapusUser" onclick="confirmHapusUser()" class="btn btn-danger text-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
+          </svg>
+          Ya, Hapus
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- TOAST CONTAINER                                 -->
+  <!-- ============================================== -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-2"></div>
+
+  <!-- ============================================== -->
+  <!-- MAIN SCRIPT                                     -->
+  <!-- ============================================== -->
+  <script>
+    let allUsers = [];
+    let unitsList = [];
+    let userModalState = { mode: 'add', username: null };
+    let hapusUserState = { username: null };
+
+    // ============ LOAD DATA ============
+    async function loadData() {
+      const el = LAYOUT.content();
+      el.innerHTML = APP.loadingBox('Memuat data user...');
+
+      try {
+        const [users, units] = await Promise.all([
+          API.get('getUsersList'),
+          API.get('getUnits')
+        ]);
+
+        allUsers = users || [];
+        unitsList = (units || []).filter(u =>
+          u.aktif === true || String(u.aktif).toUpperCase() === 'TRUE'
+        );
+
+        render();
+      } catch (err) {
+        el.innerHTML = APP.errorBox(err.message);
+      }
+    }
+
+    // ============ RENDER ============
+    function render() {
+      LAYOUT.setTitle('Kelola User', `${allUsers.length} user terdaftar`);
+
+      const stats = {
+        total: allUsers.length,
+        admin: allUsers.filter(u => String(u.role).toLowerCase() === 'admin').length,
+        unit: allUsers.filter(u => String(u.role).toLowerCase() === 'unit').length
+      };
+
+      LAYOUT.content().innerHTML = `
+        <!-- STATS -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          ${statCard('Total User', stats.total, 'from-blue-500 to-blue-600', '👥')}
+          ${statCard('Admin', stats.admin, 'from-violet-500 to-violet-600', '🔑')}
+          ${statCard('Unit', stats.unit, 'from-emerald-500 to-emerald-600', '👤')}
+        </div>
+
+        <!-- TABLE -->
+        <div class="card overflow-hidden animate-fade-in">
+          <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 class="font-bold text-slate-800">Daftar User</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Kelola akun pengguna aplikasi</p>
+            </div>
+            <button onclick="openModalTambahUser()" class="btn btn-primary text-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              Tambah User
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="table-modern">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Nama</th>
+                  <th>Role</th>
+                  <th>Unit Kerja</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${allUsers.length === 0 ? `
+                  <tr><td colspan="6" class="text-center py-8 text-slate-400">Belum ada user</td></tr>
+                ` : allUsers.map(u => renderUserRow(u)).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function statCard(label, value, gradient, icon) {
+      return `
+        <div class="card p-5 animate-fade-in">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xl shadow-lg shrink-0">
+              ${icon}
+            </div>
+            <div>
+              <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">${label}</div>
+              <div class="text-2xl font-bold text-slate-800">${value}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderUserRow(u) {
+      const role = String(u.role || '').toLowerCase();
+      const isAktif = u.aktif === true || String(u.aktif).toUpperCase() === 'TRUE';
+      const isSelf = String(u.username).toLowerCase() === String(AUTH.getUser().username).toLowerCase();
+
+      const roleBadge = role === 'admin'
+        ? 'bg-violet-100 text-violet-700'
+        : 'bg-emerald-100 text-emerald-700';
+
+      const statusBadge = isAktif
+        ? 'bg-emerald-100 text-emerald-700'
+        : 'bg-slate-100 text-slate-500';
+
+      const namaEsc = (u.nama || '').replace(/'/g, "\\'");
+      const usernameEsc = (u.username || '').replace(/'/g, "\\'");
+
+      return `
+        <tr>
+          <td>
+            <span class="font-mono text-sm font-medium text-slate-700">${APP.esc(u.username)}</span>
+            ${isSelf ? '<span class="text-xs text-blue-600 ml-1">(Anda)</span>' : ''}
+          </td>
+          <td class="text-sm text-slate-700">${APP.esc(u.nama)}</td>
+          <td>
+            <span class="badge ${roleBadge}">${APP.esc(u.role)}</span>
+          </td>
+          <td class="text-sm text-slate-500">${APP.esc(u.kode_unit || '-')}</td>
+          <td class="text-center">
+            <span class="badge ${statusBadge}">${isAktif ? 'Aktif' : 'Nonaktif'}</span>
+          </td>
+          <td>
+            <div class="flex items-center justify-center gap-0.5">
+              <button onclick="openModalEditUser('${usernameEsc}', '${namaEsc}', '${APP.esc(u.role)}', '${APP.esc(u.kode_unit || '')}')"
+                      class="btn btn-ghost p-2" title="Edit">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+              </button>
+
+              <button onclick="openModalResetPassword('${usernameEsc}')"
+                      class="btn btn-ghost p-2 text-amber-600 hover:bg-amber-50" title="Reset Password">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                </svg>
+              </button>
+
+              ${!isSelf ? `
+                <button onclick="toggleUserStatus('${usernameEsc}', ${!isAktif})"
+                        class="btn btn-ghost p-2 ${isAktif ? 'text-rose-600 hover:bg-rose-50' : 'text-emerald-600 hover:bg-emerald-50'}"
+                        title="${isAktif ? 'Nonaktifkan' : 'Aktifkan'}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="${isAktif
+                            ? 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636'
+                            : 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'}"/>
+                  </svg>
+                </button>
+
+                <button onclick="openModalHapusUser('${usernameEsc}')"
+                        class="btn btn-ghost p-2 hover:!bg-rose-50 hover:!text-rose-600" title="Hapus">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
+                  </svg>
+                </button>
+              ` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    // ============ MODAL: TAMBAH ============
+    function openModalTambahUser() {
+      userModalState = { mode: 'add', username: null };
+
+      document.getElementById('modalUserTitle').textContent = 'Tambah User';
+      document.getElementById('userUsername').value = '';
+      document.getElementById('userUsername').readOnly = false;
+      document.getElementById('userPassword').value = '';
+      document.getElementById('userNama').value = '';
+      document.getElementById('userRole').value = '';
+      document.getElementById('passwordGroup').style.display = '';
+      document.getElementById('modalUserSubmitBtn').textContent = 'Simpan';
+
+      // Populate unit dropdown
+      const unitSel = document.getElementById('userUnit');
+      unitSel.innerHTML = '<option value="">— Pilih unit (opsional) —</option>' +
+        unitsList.map(u => `<option value="${APP.esc(u.kode_unit)}">${APP.esc(u.nama_unit)}</option>`).join('');
+
+      document.getElementById('modalUser').classList.remove('hidden');
+      setTimeout(() => document.getElementById('userUsername').focus(), 100);
+    }
+
+    // ============ MODAL: EDIT ============
+    function openModalEditUser(username, nama, role, kodeUnit) {
+      userModalState = { mode: 'edit', username };
+
+      document.getElementById('modalUserTitle').textContent = 'Edit User';
+      document.getElementById('userUsername').value = username;
+      document.getElementById('userUsername').readOnly = true;
+      document.getElementById('userNama').value = nama;
+      document.getElementById('userRole').value = role;
+      document.getElementById('passwordGroup').style.display = 'none';
+      document.getElementById('modalUserSubmitBtn').textContent = 'Simpan Perubahan';
+
+      const unitSel = document.getElementById('userUnit');
+      unitSel.innerHTML = '<option value="">— Pilih unit (opsional) —</option>' +
+        unitsList.map(u => `<option value="${APP.esc(u.kode_unit)}">${APP.esc(u.nama_unit)}</option>`).join('');
+      unitSel.value = kodeUnit || '';
+
+      document.getElementById('modalUser').classList.remove('hidden');
+      setTimeout(() => document.getElementById('userNama').focus(), 100);
+    }
+
+    function closeModalUser() {
+      document.getElementById('modalUser').classList.add('hidden');
+      userModalState = { mode: 'add', username: null };
+    }
+
+    // ============ SUBMIT ============
+    async function submitUser() {
+      const btn = document.getElementById('modalUserSubmitBtn');
+      const username = document.getElementById('userUsername').value.trim().toLowerCase();
+      const password = document.getElementById('userPassword').value;
+      const nama = document.getElementById('userNama').value.trim();
+      const role = document.getElementById('userRole').value;
+      const kode_unit = document.getElementById('userUnit').value;
+
+      // Validasi
+      if (!username) { alert('Username wajib diisi'); return; }
+      if (userModalState.mode === 'add' && !password) { alert('Password wajib diisi'); return; }
+      if (userModalState.mode === 'add' && password.length < 6) { alert('Password minimal 6 karakter'); return; }
+      if (!nama) { alert('Nama lengkap wajib diisi'); return; }
+      if (!role) { alert('Role wajib dipilih'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      try {
+        if (userModalState.mode === 'add') {
+          await API.post('createUser', { username, password, nama, role, kode_unit });
+          showToast('User berhasil ditambahkan', 'success');
+        } else {
+          await API.post('updateUser', { username, nama, role, kode_unit });
+          showToast('User berhasil diupdate', 'success');
+        }
+
+        closeModalUser();
+        loadData();
+      } catch (err) {
+        showToast('Gagal: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = userModalState.mode === 'add' ? 'Simpan' : 'Simpan Perubahan';
+      }
+    }
+
+    // ============ RESET PASSWORD ============
+    async function openModalResetPassword(username) {
+      const pwd = prompt(
+        `Reset password untuk "${username}"\n\nMasukkan password baru (min. 6 karakter):`
+      );
+      if (pwd === null) return;
+      if (pwd.length < 6) {
+        alert('Password minimal 6 karakter');
+        return;
+      }
+
+      try {
+        await API.post('resetPassword', { username, password_baru: pwd });
+        showToast(`Password "${username}" berhasil direset`, 'success');
+      } catch (err) {
+        showToast('Gagal reset: ' + err.message, 'error');
+      }
+    }
+
+    // ============ TOGGLE STATUS ============
+    async function toggleUserStatus(username, aktifBaru) {
+      const aksi = aktifBaru ? 'mengaktifkan' : 'menonaktifkan';
+      if (!confirm(`${aksi.charAt(0).toUpperCase() + aksi.slice(1)} user "${username}"?`)) return;
+
+      try {
+        await API.post('toggleUserActive', { username, aktif: aktifBaru });
+        showToast(`User ${aktifBaru ? 'diaktifkan' : 'dinonaktifkan'}`, 'success');
+        loadData();
+      } catch (err) {
+        showToast('Gagal: ' + err.message, 'error');
+      }
+    }
+
+    // ============ HAPUS ============
+    function openModalHapusUser(username) {
+      hapusUserState = { username };
+      document.getElementById('hapusUserText').textContent = username;
+      document.getElementById('modalHapusUser').classList.remove('hidden');
+    }
+
+    function closeModalHapusUser() {
+      document.getElementById('modalHapusUser').classList.add('hidden');
+      hapusUserState = { username: null };
+    }
+
+    async function confirmHapusUser() {
+      if (!hapusUserState.username) return;
+
+      const btn = document.getElementById('btnHapusUser');
+      btn.disabled = true;
+      btn.textContent = 'Menghapus...';
+
+      try {
+        await API.post('deleteUser', { username: hapusUserState.username });
+        showToast('User berhasil dihapus', 'success');
+        closeModalHapusUser();
+        loadData();
+      } catch (err) {
+        showToast('Gagal: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Ya, Hapus';
+      }
+    }
+
+    // ============ TOAST ============
+    function showToast(message, type = 'info', duration = 3000) {
+      const container = document.getElementById('toastContainer');
+
+      const config = {
+        success: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800',
+          icon: `<svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>` },
+        error: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-800',
+          icon: `<svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>` },
+        info: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800',
+          icon: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>` }
+      }[type] || { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', icon: '' };
+
+      const toast = document.createElement('div');
+      toast.className = `${config.bg} ${config.border} ${config.text} border rounded-xl shadow-lg p-4 flex items-center gap-3 min-w-[280px] max-w-md opacity-0 translate-x-8 transition-all duration-300`;
+      toast.innerHTML = `
+        <div class="shrink-0">${config.icon}</div>
+        <div class="flex-1 text-sm font-medium">${APP.esc(message)}</div>
+      `;
+
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('opacity-0', 'translate-x-8');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-8');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    // ============ ESC + OVERLAY ============
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!document.getElementById('modalUser').classList.contains('hidden')) closeModalUser();
+        if (!document.getElementById('modalHapusUser').classList.contains('hidden')) closeModalHapusUser();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) {
+        if (e.target.id === 'modalUser') closeModalUser();
+        if (e.target.id === 'modalHapusUser') closeModalHapusUser();
+      }
+    });
+
+    // ============ START ============
+    // Hanya load kalau user adalah Admin
+    if (_currentUser && String(_currentUser.role).toLowerCase() === 'admin') {
+      loadData();
+    }
+  </script>
+
+</body>
+</html>
