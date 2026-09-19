@@ -207,7 +207,14 @@ async function loadChecklist() {
   el.innerHTML = APP.loadingBox('Memuat checklist...');
 
   try {
-    allData = await API.getChecklist(unit, periode, kodeKK);
+    const data = await API.getChecklist(unit, periode, kodeKK);
+
+    // ✅ FILTER: KKLEAD II hanya kode_kk yang berawalan ANGKA
+    // (bukan 'L*' = KKLEAD I, bukan 'P*' = KKLEAD III)
+    allData = data.filter(d => /^\d/.test(String(d.kode_kk || '').trim()));
+
+    console.log(`📊 KKLEAD II: ${allData.length} dari ${data.length} parameter (filtered)`);
+
     renderChecklist();
   } catch (err) {
     console.error('❌ Error:', err);
