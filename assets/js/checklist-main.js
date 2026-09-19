@@ -155,3 +155,49 @@ async function toggleGradeSelesai(idTrans, grade) {
 }
 
 window.toggleGradeSelesai = toggleGradeSelesai;
+
+/**
+ * Prompt untuk isi/edit uraian hasil
+ */
+async function isiUraian(idTrans) {
+  // Cari data trans saat ini
+  const item = allData.find(d => d.id_trans === idTrans);
+  const uraianLama = item?.trans?.uraian_hasil || '';
+
+  const uraian = prompt(
+    'Uraian Hasil Pengujian:\n\n' +
+    '(Ketik uraian kondisi/hasil pengujian untuk parameter ini)',
+    uraianLama
+  );
+
+  if (uraian === null) return; // user batal
+  if (uraian.trim() === '') {
+    alert('Uraian tidak boleh kosong');
+    return;
+  }
+
+  try {
+    await API.post('saveUraian', {
+      id_trans: idTrans,
+      uraian_hasil: uraian
+    });
+
+    showToast('Uraian berhasil disimpan', 'success');
+
+    // Fade + reload
+    const content = document.getElementById('pageContent');
+    if (content) {
+      content.style.transition = 'opacity 0.25s';
+      content.style.opacity = '0.5';
+    }
+    setTimeout(() => {
+      if (typeof loadChecklist === 'function') loadChecklist();
+      setTimeout(() => { if (content) content.style.opacity = '1'; }, 100);
+    }, 250);
+
+  } catch (err) {
+    showToast('Gagal menyimpan uraian: ' + err.message, 'error');
+  }
+}
+
+window.isiUraian = isiUraian;
