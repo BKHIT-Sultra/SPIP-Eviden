@@ -558,7 +558,9 @@ function renderEvidenRow(e, nomor, canEdit) {
     : '';
 
   return `
-    <div class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition">
+    <div class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition"
+         data-id-trans="${e.id_eviden}"
+         data-eviden-row>
       <div class="text-sm font-semibold text-slate-400 w-6 pt-2.5 shrink-0 text-right">${nomor}.</div>
       ${iconHtml}
       <div class="flex-1 min-w-0 pt-0.5">
