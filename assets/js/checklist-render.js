@@ -89,6 +89,17 @@ function renderChecklist() {
   if (picSel) {
     picSel.addEventListener('change', filterChecklist);
   }
+  // ✅ Pasang listener toggle untuk auto-save state
+  document.querySelectorAll('details[data-id]').forEach(el => {
+    el.addEventListener('toggle', () => {
+      if (typeof saveChecklistState === 'function') saveChecklistState();
+    });
+  });
+  
+  // ✅ Restore state (buka details + scroll)
+  if (typeof restoreChecklistState === 'function') {
+    restoreChecklistState();
+  }
 }
 
 function renderEmptyState() {
