@@ -12,98 +12,133 @@ let periode = params.get('periode');
 let allData = [];
 
 // ============ PERSIST STATE ============
-const STATE_KEY = 'spip_checklist_state';
+const STATE_KEY = 'spip_checklist_state_v3';
 let _isRestoring = false;
 let _scrollTimer = null;
+let _hasRendered = false;
 
 /**
- * Capture state: ID details yang terbuka + posisi scroll
+ * Simpan state:
+ * - openId: ID details yang terbuka
+ * - viewportOffset: posisi top details terhadap viewport (bisa negatif)
+ * - y: scroll position
  */
 function captureState() {
-  if (_isRestoring) return;
+  if (_isRestoring) {
+    console.log('[STATE] capture skipped (restoring)');
+    return;
+  }
+
   try {
     const openEl = document.querySelector('details[data-id][open]');
-    const openId = openEl ? openEl.dataset.id : '';
+
+    let openId = '';
+    let viewportOffset = 0;
+
+    if (openEl) {
+      openId = openEl.dataset.id;
+      const rect = openEl.getBoundingClientRect();
+      viewportOffset = rect.top;
+    }
+
     const y = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
 
     sessionStorage.setItem(STATE_KEY, JSON.stringify({
       openId,
+      viewportOffset,
       y,
       ts: Date.now()
     }));
 
-    console.log('[STATE] Saved →', { openId, y });
+    console.log('[STATE] 💾 Captured', {
+      openId: openId ? openId.substring(0, 30) + '...' : '(none)',
+      viewportOffset: Math.round(viewportOffset),
+      y: Math.round(y)
+    });
   } catch (e) {
-    console.warn('[STATE] Save error:', e);
+    console.warn('[STATE] Capture error:', e);
   }
 }
 
 /**
- * Restore state: buka details + scroll ke posisi
+ * Restore state
  */
 function restoreState() {
   try {
     const raw = sessionStorage.getItem(STATE_KEY);
     if (!raw) {
-      console.log('[STATE] No state');
+      console.log('[STATE] ℹ️ No state to restore');
       return;
     }
 
     const state = JSON.parse(raw);
-    console.log('[STATE] Restoring →', state);
+    console.log('[STATE] 🔄 State loaded:', state);
 
+    // Expire 30 menit
     if (Date.now() - (state.ts || 0) > 30 * 60 * 1000) {
       sessionStorage.removeItem(STATE_KEY);
+      console.log('[STATE] ⏰ State expired');
       return;
     }
 
     const openId = state.openId || '';
-    const targetY = state.y || 0;
+    const viewportOffset = typeof state.viewportOffset === 'number' ? state.viewportOffset : 0;
+    const savedY = state.y || 0;
 
-    if (!openId && targetY === 0) return;
+    if (!openId && savedY === 0) {
+      console.log('[STATE] ℹ️ State is empty, skip restore');
+      return;
+    }
 
     _isRestoring = true;
 
-    // 1. Buka details yang tersimpan
+    // 1. Buka details
     if (openId) {
       const el = document.querySelector(`details[data-id="${openId}"]`);
-      if (el) el.open = true;
+      if (el) {
+        el.open = true;
+        console.log('[STATE] 📂 Opened details:', openId.substring(0, 30) + '...');
+      } else {
+        console.log('[STATE] ⚠️ Details not found:', openId.substring(0, 30) + '...');
+      }
     }
 
-    // 2. Scroll — pakai scrollIntoView kalau ada openId
-    let attempt = 0;
+    // 2. Scroll setelah delay
+    const doScroll = (attempt) => {
+      attempt = attempt || 0;
+      let targetY = savedY;
 
-    const doScroll = () => {
-      attempt++;
-
+      // Hitung target berdasarkan posisi element
       if (openId) {
         const el = document.querySelector(`details[data-id="${openId}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
-          const currentY = window.scrollY || window.pageYOffset || 0;
-          const targetScroll = rect.top + currentY - 80;
-          window.scrollTo(0, Math.max(0, targetScroll));
-          console.log('[STATE] scrollIntoView →', targetScroll, 'attempt', attempt);
+          const currentScrollY = window.scrollY || window.pageYOffset || 0;
+          const elementTopInDoc = rect.top + currentScrollY;
+          const computedY = elementTopInDoc - viewportOffset;
+          if (!isNaN(computedY) && computedY >= 0) {
+            targetY = computedY;
+          }
         }
-      } else {
-        window.scrollTo(0, targetY);
-        console.log('[STATE] scrollTo Y →', targetY, 'attempt', attempt);
       }
 
-      if (attempt < 6) {
-        requestAnimationFrame(doScroll);
+      window.scrollTo(0, Math.max(0, targetY));
+
+      if (attempt < 4) {
+        requestAnimationFrame(() => doScroll(attempt + 1));
       } else {
+        console.log(`[STATE] ✅ Restored → scrollY = ${Math.round(targetY)}`);
         setTimeout(() => {
           _isRestoring = false;
-          console.log('[STATE] Restore done');
-        }, 150);
+          console.log('[STATE] 🔓 Guard released');
+        }, 250);
       }
     };
 
-    // Tunggu 2 frame biar DOM siap
-    requestAnimationFrame(() => {
-      requestAnimationFrame(doScroll);
-    });
+    // Delay supaya layout selesai
+    setTimeout(() => {
+      requestAnimationFrame(() => doScroll(0));
+    }, 150);
 
   } catch (e) {
     _isRestoring = false;
@@ -111,9 +146,7 @@ function restoreState() {
   }
 }
 
-/**
- * Alias untuk backward-compat
- */
+// Alias untuk backward-compat
 window.saveChecklistState = captureState;
 window.restoreChecklistState = restoreState;
 window.captureState = captureState;
@@ -129,25 +162,28 @@ function setupScrollTracking() {
   window.addEventListener('scroll', () => {
     if (_isRestoring) return;
     clearTimeout(_scrollTimer);
-    _scrollTimer = setTimeout(captureState, 200);
+    _scrollTimer = setTimeout(captureState, 250);
   }, { passive: true });
 }
 
 /**
- * Tracking toggle details (saat user buka/tutup parameter)
+ * Tracking toggle details
  */
 function setupDetailsTracking() {
   document.addEventListener('toggle', (e) => {
     if (e.target && e.target.tagName === 'DETAILS' && e.target.dataset.id) {
-      if (_isRestoring) return;
+      if (_isRestoring) {
+        console.log('[STATE] toggle ignored (restoring)');
+        return;
+      }
       captureState();
     }
-  }, true); // capture=true biar catch semua toggle
+  }, true);
 }
 
 // ============ INIT ============
 async function initChecklist() {
-  // Matikan auto scroll restore bawaan browser
+  // Matikan auto scroll restore browser
   if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
   }
@@ -200,8 +236,11 @@ async function initChecklist() {
 
 // ============ LOAD DATA ============
 async function loadChecklist() {
-  // Save state SEBELUM ganti konten
-  captureState();
+  // Save state HANYA kalau konten sudah ada (bukan initial load)
+  const existing = document.querySelector('details[data-id]');
+  if (existing) {
+    captureState();
+  }
 
   const el = LAYOUT.content();
   el.innerHTML = APP.loadingBox('Memuat checklist...');
@@ -209,11 +248,10 @@ async function loadChecklist() {
   try {
     const data = await API.getChecklist(unit, periode, kodeKK);
 
-    // ✅ FILTER: KKLEAD II hanya kode_kk yang berawalan ANGKA
-    // (bukan 'L*' = KKLEAD I, bukan 'P*' = KKLEAD III)
+    // Filter: KKLEAD II = prefix angka saja
     allData = data.filter(d => /^\d/.test(String(d.kode_kk || '').trim()));
 
-    console.log(`📊 KKLEAD II: ${allData.length} dari ${data.length} parameter (filtered)`);
+    console.log(`📊 KKLEAD II: ${allData.length} dari ${data.length} parameter`);
 
     renderChecklist();
   } catch (err) {
@@ -235,7 +273,6 @@ async function ambilLinkUpload(idTrans) {
 async function syncFolder(idTrans) {
   if (!confirm('Sync file dari folder Drive?')) return;
 
-  // Save state sebelum reload
   captureState();
 
   try {
@@ -280,7 +317,6 @@ async function toggleGradeSelesai(idTrans, grade) {
     `;
   }
 
-  // ✅ Save state SEBELUM API call
   captureState();
 
   try {
@@ -291,14 +327,13 @@ async function toggleGradeSelesai(idTrans, grade) {
 
     showToast(`Grade ${grade} berhasil diupdate`, 'success');
 
-    // Fade konten + reload
     const content = document.getElementById('pageContent');
     if (content) {
       content.style.transition = 'opacity 0.25s';
       content.style.opacity = '0.5';
     }
     setTimeout(() => {
-      if (typeof loadChecklist === 'function') loadChecklist();
+      loadChecklist();
       setTimeout(() => { if (content) content.style.opacity = '1'; }, 100);
     }, 250);
 
