@@ -11,141 +11,149 @@ let unit = params.get('unit');
 let periode = params.get('periode');
 let allData = [];
 
-// ============================================
-// PERSIST STATE — Details & Scroll Position
-// ============================================
-const CHECKLIST_STATE_KEY = 'spip_checklist_state';
-let _scrollSaveTimer = null;
-let _isRestoringState = false;
+// ============ PERSIST STATE ============
+const STATE_KEY = 'spip_checklist_state';
+let _isRestoring = false;
+let _scrollTimer = null;
 
 /**
- * Simpan state: details yang terbuka + scroll position
+ * Capture state: ID details yang terbuka + posisi scroll
  */
-function saveChecklistState() {
-  // ✅ Skip kalau sedang restore
-  if (_isRestoringState) return;
-
-  // ✅ Skip kalau modal sedang terbuka (body.overflow hidden)
-  if (document.body.style.overflow === 'hidden') {
-    console.log('⏸️ Skip save — modal terbuka');
-    return;
-  }
-
+function captureState() {
+  if (_isRestoring) return;
   try {
-    const openDetails = [];
-    document.querySelectorAll('details[data-id]').forEach(el => {
-      if (el.open) openDetails.push(el.dataset.id);
-    });
-
+    const openEl = document.querySelector('details[data-id][open]');
+    const openId = openEl ? openEl.dataset.id : '';
     const y = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
 
-    sessionStorage.setItem(CHECKLIST_STATE_KEY, JSON.stringify({
-      open: openDetails,
-      scrollY: y,
-      timestamp: Date.now()
+    sessionStorage.setItem(STATE_KEY, JSON.stringify({
+      openId,
+      y,
+      ts: Date.now()
     }));
 
-    console.log('💾 State saved:', { open: openDetails.length, scrollY: y });
+    console.log('[STATE] Saved →', { openId, y });
   } catch (e) {
-    console.warn('Gagal save state:', e);
+    console.warn('[STATE] Save error:', e);
   }
 }
 
 /**
- * Restore state: buka details + scroll ke posisi sebelumnya
+ * Restore state: buka details + scroll ke posisi
  */
-function restoreChecklistState() {
+function restoreState() {
   try {
-    const raw = sessionStorage.getItem(CHECKLIST_STATE_KEY);
+    const raw = sessionStorage.getItem(STATE_KEY);
     if (!raw) {
-      console.log('📍 Tidak ada state tersimpan');
+      console.log('[STATE] No state');
       return;
     }
 
     const state = JSON.parse(raw);
-    console.log('📍 Restoring state:', state);
+    console.log('[STATE] Restoring →', state);
 
-    // Expired 30 menit
-    if (Date.now() - (state.timestamp || 0) > 30 * 60 * 1000) {
-      sessionStorage.removeItem(CHECKLIST_STATE_KEY);
+    if (Date.now() - (state.ts || 0) > 30 * 60 * 1000) {
+      sessionStorage.removeItem(STATE_KEY);
       return;
     }
 
-    const openIds = state.open || [];
-    const targetY = state.scrollY || 0;
+    const openId = state.openId || '';
+    const targetY = state.y || 0;
 
-    if (openIds.length === 0 && targetY === 0) return;
+    if (!openId && targetY === 0) return;
 
-    _isRestoringState = true;
+    _isRestoring = true;
 
-    // 1️⃣ Buka details
-    openIds.forEach(id => {
-      const el = document.querySelector(`details[data-id="${id}"]`);
+    // 1. Buka details yang tersimpan
+    if (openId) {
+      const el = document.querySelector(`details[data-id="${openId}"]`);
       if (el) el.open = true;
-    });
+    }
 
-    // 2️⃣ Scroll — pakai scrollIntoView ke element pertama
-    setTimeout(() => {
-      const firstId = openIds[0];
+    // 2. Scroll — pakai scrollIntoView kalau ada openId
+    let attempt = 0;
 
-      if (firstId) {
-        const targetEl = document.querySelector(`details[data-id="${firstId}"]`);
-        if (targetEl) {
-          // Scroll ke elemen, kasih offset 80px untuk topbar
-          const rect = targetEl.getBoundingClientRect();
-          const top = rect.top + window.scrollY - 80;
-          window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
-          console.log('🎯 Scroll ke element:', firstId, '→', top);
+    const doScroll = () => {
+      attempt++;
+
+      if (openId) {
+        const el = document.querySelector(`details[data-id="${openId}"]`);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const currentY = window.scrollY || window.pageYOffset || 0;
+          const targetScroll = rect.top + currentY - 80;
+          window.scrollTo(0, Math.max(0, targetScroll));
+          console.log('[STATE] scrollIntoView →', targetScroll, 'attempt', attempt);
         }
-      } else if (targetY > 0) {
-        window.scrollTo({ top: targetY, behavior: 'instant' });
+      } else {
+        window.scrollTo(0, targetY);
+        console.log('[STATE] scrollTo Y →', targetY, 'attempt', attempt);
       }
 
-      // Lepas guard
-      setTimeout(() => {
-        _isRestoringState = false;
-        console.log('✅ Restore selesai');
-      }, 400);
-    }, 200);
+      if (attempt < 6) {
+        requestAnimationFrame(doScroll);
+      } else {
+        setTimeout(() => {
+          _isRestoring = false;
+          console.log('[STATE] Restore done');
+        }, 150);
+      }
+    };
+
+    // Tunggu 2 frame biar DOM siap
+    requestAnimationFrame(() => {
+      requestAnimationFrame(doScroll);
+    });
 
   } catch (e) {
-    _isRestoringState = false;
-    console.warn('Gagal restore state:', e);
+    _isRestoring = false;
+    console.warn('[STATE] Restore error:', e);
   }
 }
 
 /**
- * Clear state
+ * Alias untuk backward-compat
  */
-function clearChecklistState() {
-  sessionStorage.removeItem(CHECKLIST_STATE_KEY);
-}
+window.saveChecklistState = captureState;
+window.restoreChecklistState = restoreState;
+window.captureState = captureState;
+window.restoreState = restoreState;
 
 /**
- * Auto-save saat user scroll
+ * Tracking scroll otomatis
  */
-function setupScrollSave() {
-  if (window._spip_scroll_setup) return;
-  window._spip_scroll_setup = true;
+function setupScrollTracking() {
+  if (window._spip_tracking) return;
+  window._spip_tracking = true;
 
   window.addEventListener('scroll', () => {
-    // ✅ Skip kalau sedang restore
-    if (_isRestoringState) return;
-
-    clearTimeout(_scrollSaveTimer);
-    _scrollSaveTimer = setTimeout(saveChecklistState, 250);
+    if (_isRestoring) return;
+    clearTimeout(_scrollTimer);
+    _scrollTimer = setTimeout(captureState, 200);
   }, { passive: true });
 }
 
-// Expose ke window
-window.saveChecklistState = saveChecklistState;
-window.restoreChecklistState = restoreChecklistState;
-window.clearChecklistState = clearChecklistState;
+/**
+ * Tracking toggle details (saat user buka/tutup parameter)
+ */
+function setupDetailsTracking() {
+  document.addEventListener('toggle', (e) => {
+    if (e.target && e.target.tagName === 'DETAILS' && e.target.dataset.id) {
+      if (_isRestoring) return;
+      captureState();
+    }
+  }, true); // capture=true biar catch semua toggle
+}
 
 // ============ INIT ============
 async function initChecklist() {
-  // ✅ Setup auto-save scroll (sekali saja)
-  setupScrollSave();
+  // Matikan auto scroll restore bawaan browser
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+
+  setupScrollTracking();
+  setupDetailsTracking();
 
   console.log('🚀 INIT checklist');
 
@@ -174,7 +182,7 @@ async function initChecklist() {
           .sort((a, b) => b._t - a._t);
         aktif = sorted[0];
       }
-      periode = aktif ? String(aktif.periode) : '';
+      periode = aktif ? String(aktif.periode).replace(/\.0+$/, '') : '';
     } catch (e) {
       console.error('Gagal ambil periodes:', e);
     }
@@ -192,6 +200,9 @@ async function initChecklist() {
 
 // ============ LOAD DATA ============
 async function loadChecklist() {
+  // Save state SEBELUM ganti konten
+  captureState();
+
   const el = LAYOUT.content();
   el.innerHTML = APP.loadingBox('Memuat checklist...');
 
@@ -216,6 +227,10 @@ async function ambilLinkUpload(idTrans) {
 
 async function syncFolder(idTrans) {
   if (!confirm('Sync file dari folder Drive?')) return;
+
+  // Save state sebelum reload
+  captureState();
+
   try {
     const r = await API.syncFolder({ id_trans: idTrans });
     alert(`Selesai. ${r.added} file baru, ${r.skipped} dilewati.`);
@@ -227,10 +242,13 @@ async function syncFolder(idTrans) {
 
 async function updateStatus(idTrans, statusSekarang) {
   const status = prompt(
-    'Status baru (Belum/Proses/Upload/Verifikasi/Selesai/Revisi):',
+    'Status baru (Belum/Upload/Selesai):',
     statusSekarang
   );
   if (!status) return;
+
+  captureState();
+
   try {
     await API.saveStatus({ id_trans: idTrans, status: status });
     loadChecklist();
@@ -239,12 +257,7 @@ async function updateStatus(idTrans, statusSekarang) {
   }
 }
 
-// ============ START ============
-initChecklist();
-
-/**
- * Toggle mark grade sebagai Selesai
- */
+// ============ TOGGLE GRADE SELESAI ============
 async function toggleGradeSelesai(idTrans, grade) {
   const btn = document.querySelector(`[data-grade-btn="${idTrans}-${grade}"]`);
   const originalHtml = btn ? btn.innerHTML : '';
@@ -260,6 +273,9 @@ async function toggleGradeSelesai(idTrans, grade) {
     `;
   }
 
+  // ✅ Save state SEBELUM API call
+  captureState();
+
   try {
     await API.post('markGradeSelesai', {
       id_trans: idTrans,
@@ -267,8 +283,6 @@ async function toggleGradeSelesai(idTrans, grade) {
     });
 
     showToast(`Grade ${grade} berhasil diupdate`, 'success');
-    // ✅ Simpan state sebelum reload
-    if (typeof saveChecklistState === 'function') saveChecklistState();
 
     // Fade konten + reload
     const content = document.getElementById('pageContent');
@@ -292,48 +306,5 @@ async function toggleGradeSelesai(idTrans, grade) {
 
 window.toggleGradeSelesai = toggleGradeSelesai;
 
-/**
- * Prompt untuk isi/edit uraian hasil
- */
-async function isiUraian(idTrans) {
-  // Cari data trans saat ini
-  const item = allData.find(d => d.id_trans === idTrans);
-  const uraianLama = item?.trans?.uraian_hasil || '';
-
-  const uraian = prompt(
-    'Uraian Hasil Pengujian:\n\n' +
-    '(Ketik uraian kondisi/hasil pengujian untuk parameter ini)',
-    uraianLama
-  );
-
-  if (uraian === null) return; // user batal
-  if (uraian.trim() === '') {
-    alert('Uraian tidak boleh kosong');
-    return;
-  }
-
-  try {
-    await API.post('saveUraian', {
-      id_trans: idTrans,
-      uraian_hasil: uraian
-    });
-
-    showToast('Uraian berhasil disimpan', 'success');
-
-    // Fade + reload
-    const content = document.getElementById('pageContent');
-    if (content) {
-      content.style.transition = 'opacity 0.25s';
-      content.style.opacity = '0.5';
-    }
-    setTimeout(() => {
-      if (typeof loadChecklist === 'function') loadChecklist();
-      setTimeout(() => { if (content) content.style.opacity = '1'; }, 100);
-    }, 250);
-
-  } catch (err) {
-    showToast('Gagal menyimpan uraian: ' + err.message, 'error');
-  }
-}
-
-window.isiUraian = isiUraian;
+// ============ START ============
+initChecklist();
