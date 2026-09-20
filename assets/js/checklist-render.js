@@ -658,13 +658,39 @@ function filterChecklist() {
   const grade = document.getElementById('filterGrade').value;
   const pic = document.getElementById('filterPIC')?.value || '';
 
+  // ✅ Bangun peta: id_trans → grade tertinggi yang selesai
+  const transGradeMap = {};
+  allData.forEach(item => {
+    const gradesDone = (item.trans.grades_done || []).map(g => String(g).toUpperCase());
+    const GRADE_ORDER = { 'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1 };
+    if (gradesDone.length > 0) {
+      gradesDone.sort((a, b) => (GRADE_ORDER[b] || 0) - (GRADE_ORDER[a] || 0));
+      transGradeMap[item.id_trans] = gradesDone[0];
+    } else {
+      transGradeMap[item.id_trans] = '';
+    }
+  });
+
   document.querySelectorAll('details[data-id]').forEach(el => {
+    const id = el.dataset.id;
     const text = el.textContent.toLowerCase();
     let show = true;
+
+    // Filter pencarian teks
     if (q && !text.includes(q)) show = false;
+
+    // Filter status
     if (status && !el.textContent.includes(status)) show = false;
-    if (grade && !el.textContent.includes('Grade ' + grade)) show = false;
+
+    // ✅ Filter grade — berdasarkan grade tertinggi yang selesai
+    if (grade) {
+      const highest = transGradeMap[id] || '';
+      if (highest !== grade) show = false;
+    }
+
+    // Filter PIC
     if (pic && !el.textContent.includes(pic)) show = false;
+
     el.style.display = show ? '' : 'none';
   });
 }
