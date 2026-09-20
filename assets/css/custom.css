@@ -735,3 +735,16 @@ svg.w-12 { max-width: 48px; max-height: 48px; }
 
 /* Body tetap bisa di-scroll di belakang modal
    — tapi pointer-events di-block oleh overlay */
+
+/* ============================================ */
+/* BOUNCING BARS LOADING ANIMATION              */
+/* ============================================ */
+@keyframes bounce-bar {
+  0%, 100% { transform: scaleY(0.4); }
+  50%      { transform: scaleY(1); }
+}
+
+.animate-bounce-bar {
+  animation: bounce-bar 1s ease-in-out infinite;
+  transform-origin: bottom;
+}
