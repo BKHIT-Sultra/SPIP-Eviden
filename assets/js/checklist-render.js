@@ -137,6 +137,17 @@ function renderHeaderKK() {
 }
 
 function renderFilterBar() {
+  // Hitung jumlah per status
+  const statusCount = {
+    Belum: 0,
+    Upload: 0,
+    Selesai: 0
+  };
+  allData.forEach(d => {
+    const s = d.trans.status;
+    if (statusCount[s] !== undefined) statusCount[s]++;
+  });
+
   // Ambil daftar PIC unik
   const allPICs = [...new Set(allData.map(d => d.trans.pic).filter(Boolean))].sort();
   const picOptions = allPICs
@@ -152,15 +163,19 @@ function renderFilterBar() {
           </svg>
           <input type="text" id="searchParam" placeholder="Cari parameter..." class="input pl-10"/>
         </div>
-        <select id="filterStatus" class="input max-w-[180px]">
-          <option value="">Semua Status</option>
-          <option>Belum</option><option>Proses</option><option>Upload</option>
-          <option>Verifikasi</option><option>Selesai</option><option>Revisi</option>
+        
+        <select id="filterStatus" class="input max-w-[200px]">
+          <option value="">Semua Status (${allData.length})</option>
+          <option value="Belum">Belum (${statusCount.Belum})</option>
+          <option value="Upload">Upload (${statusCount.Upload})</option>
+          <option value="Selesai">Selesai (${statusCount.Selesai})</option>
         </select>
+        
         <select id="filterGrade" class="input max-w-[160px]">
           <option value="">Semua Grade</option>
           <option>A</option><option>B</option><option>C</option><option>D</option><option>E</option>
         </select>
+        
         <select id="filterPIC" class="input max-w-[180px]">
           <option value="">Semua PIC</option>
           ${picOptions}
