@@ -50,7 +50,7 @@ const API = {
   getUploadLink(idTrans, grade)   { return this.get('getUploadLink', { id_trans: idTrans, grade: grade }); },
   
   // ✅ TAMBAHKAN BARIS INI — untuk download rekap
-  getRekap(unit, periode)         { return this.get('getRekap', { kode_unit: unit, periode }); },
+  getRekap(unit, periode, jenis) { return this.get('getRekap', { kode_unit: unit, periode: periode, jenis: jenis }); },
   
   getUnits()                      { return this.get('getUnits'); },
   getPeriodes()                   { return this.get('getPeriodes'); },
