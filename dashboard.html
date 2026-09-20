@@ -23,6 +23,7 @@
 
   <script>
     LAYOUT.content().innerHTML = `
+      <!-- FILTER CARD -->
       <div class="card p-4 mb-6 animate-fade-in">
         <div class="flex flex-wrap gap-3 items-end">
           <div class="flex-1 min-w-[180px] max-w-xs">
@@ -36,8 +37,8 @@
             </svg>
             Terapkan
           </button>
-    
-          <!-- ✅ TOMBOL DOWNLOAD DENGAN DROPDOWN 3 OPSI -->
+
+          <!-- TOMBOL DOWNLOAD DENGAN DROPDOWN 3 OPSI -->
           <div class="relative" id="downloadMenuWrapper">
             <button onclick="toggleDownloadMenu(event)"
                     class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg
@@ -53,12 +54,12 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
-          
+
             <!-- Dropdown Menu -->
             <div id="downloadMenu"
                  class="hidden absolute left-0 mt-1 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
-          
-              <button onclick="downloadRekap(1)" 
+
+              <button onclick="downloadRekap(1)"
                       class="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start gap-3 border-b border-slate-100 transition">
                 <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -70,8 +71,8 @@
                   <div class="text-xs text-slate-500 mt-0.5">Semua parameter, status, PIC, grade</div>
                 </div>
               </button>
-          
-              <button onclick="downloadRekap(2)" 
+
+              <button onclick="downloadRekap(2)"
                       class="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start gap-3 border-b border-slate-100 transition">
                 <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -83,8 +84,8 @@
                   <div class="text-xs text-slate-500 mt-0.5">Sertakan daftar link Drive eviden</div>
                 </div>
               </button>
-          
-              <button onclick="downloadRekap(3)" 
+
+              <button onclick="downloadRekap(3)"
                       class="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start gap-3 transition">
                 <div class="w-9 h-9 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -98,6 +99,10 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- KONTEN DASHBOARD (di luar card filter) -->
       <div id="dashContent"></div>
     `;
 
@@ -150,7 +155,6 @@
       const belum   = data.status.Belum || 0;
       const total   = data.total_parameter || 0;
 
-      // Kategorikan KK
       const kkleadGroups = {
         I:   { title: 'KKLEAD I',  subtitle: 'Penetapan Tujuan',  kks: [], total: 0, selesai: 0, total_items: 0, uploaded_items: 0 },
         II:  { title: 'KKLEAD II', subtitle: 'Struktur & Proses', kks: [], total: 0, selesai: 0, total_items: 0, uploaded_items: 0 },
@@ -164,14 +168,13 @@
         kkleadGroups[cat].selesai += kk.selesai;
         kkleadGroups[cat].total_items += kk.total_items || 0;
         kkleadGroups[cat].uploaded_items += kk.uploaded_items || 0;
-      
-        // ✅ Hitung KK yang selesai (semua parameter di KK tersebut selesai)
+
         const kkSelesai = kk.total > 0 && kk.selesai === kk.total;
         if (kkSelesai) {
           kkleadGroups[cat].kk_selesai = (kkleadGroups[cat].kk_selesai || 0) + 1;
         }
       });
-      
+
       Object.values(kkleadGroups).forEach(g => {
         g.progress = g.total_items > 0
           ? Math.round((g.uploaded_items / g.total_items) * 100)
@@ -181,7 +184,6 @@
       });
 
       el.innerHTML = `
-        <!-- STAT CARDS -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           ${statCard('Total Parameter', total, 'Semua KKLEAD', 'from-blue-500 to-blue-600', '📊')}
           ${statCard('Selesai', selesai, `${data.progress}% eviden lengkap`, 'from-emerald-500 to-emerald-600', '✓')}
@@ -189,7 +191,6 @@
           ${statCard('Belum Mulai', belum, 'belum ada eviden', 'from-rose-500 to-rose-600', '⚠')}
         </div>
 
-        <!-- PROGRESS KESELURUHAN (berbasis eviden) -->
         <div class="card p-6 mb-6 animate-fade-in">
           <div class="flex flex-wrap justify-between items-center gap-3 mb-3">
             <div>
@@ -215,19 +216,14 @@
           </div>
         </div>
 
-        <!-- 3 CARD KKLEAD -->
         <div class="grid md:grid-cols-3 gap-4 mb-6">
           ${renderKKLeadCard('I',   kkleadGroups.I,   unit, periode)}
           ${renderKKLeadCard('II',  kkleadGroups.II,  unit, periode)}
           ${renderKKLeadCard('III', kkleadGroups.III, unit, periode)}
         </div>
 
-        <!-- ============================================ -->
-        <!-- CARD KHUSUS KKLEAD II — Distribusi Grade      -->
-        <!-- ============================================ -->
         ${renderGradeDistribution(data.grade_distribution || {})}
 
-        <!-- CHARTS -->
         <div class="grid lg:grid-cols-3 gap-6 mb-6">
           <div class="card p-5 animate-fade-in-delay-1">
             <h2 class="font-bold text-slate-800 mb-3 text-sm">Distribusi Status</h2>
@@ -243,7 +239,6 @@
           </div>
         </div>
 
-        <!-- TABEL PER KK -->
         <div class="card overflow-hidden animate-fade-in-delay-3">
           <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
             <div>
@@ -333,12 +328,11 @@
       const c = colors[key];
       const progressColor = group.progress >= 75 ? 'bg-emerald-500' :
                             group.progress >= 50 ? 'bg-amber-500' : 'bg-rose-500';
-    
-      // ✅ Status KK
+
       const totalKK = group.total_kk || 0;
       const selesaiKK = group.kk_selesai || 0;
       const allKKSelesai = totalKK > 0 && selesaiKK === totalKK;
-    
+
       return `
         <div class="card p-5 animate-fade-in">
           <div class="flex items-start justify-between mb-3">
@@ -360,16 +354,16 @@
           </div>
           <div class="font-bold text-slate-800 text-sm">${group.title}</div>
           <div class="text-xs text-slate-500 mb-3">${group.subtitle}</div>
-    
+
           <div class="flex items-end justify-between mb-2">
             <div class="text-2xl font-bold ${c.text}">${group.progress}%</div>
             <div class="text-xs text-slate-500">${group.uploaded_items}/${group.total_items} item</div>
           </div>
-    
+
           <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden mb-4">
             <div class="${progressColor} h-2 rounded-full transition-all duration-500" style="width: ${group.progress}%"></div>
           </div>
-    
+
           <a href="${c.btnHref}?unit=${unit}&periode=${periode}"
              class="w-full text-xs font-medium text-slate-600 hover:text-white
                     bg-slate-50 hover:bg-gradient-to-r hover:${c.bg}
@@ -385,7 +379,7 @@
       `;
     }
 
-    // ============ CARD DISTRIBUSI GRADE (KKLEAD II) ============
+    // ============ CARD DISTRIBUSI GRADE ============
     function renderGradeDistribution(dist) {
       const gradeInfo = {
         'A': { label: 'Grade A', color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
@@ -395,15 +389,15 @@
         'E': { label: 'Grade E', color: 'bg-rose-500',    text: 'text-rose-700',    bg: 'bg-rose-50',    border: 'border-rose-200' },
         'Belum Set': { label: 'Belum Ada Grade', color: 'bg-slate-400', text: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200' }
       };
-    
+
       const order = ['E', 'D', 'C', 'B', 'A', 'Belum Set'];
       const totalParam = Object.values(dist).reduce((sum, g) => sum + (g.total_param || 0), 0);
       const totalSelesai = Object.values(dist).reduce((sum, g) => sum + (g.selesai_param || 0), 0);
-    
+
       const cards = order.map(g => {
         const info = gradeInfo[g];
         const d = dist[g] || { total_param: 0, selesai_param: 0, total_items: 0, uploaded_items: 0, progress: 0 };
-    
+
         return `
           <div class="rounded-xl border ${info.border} ${info.bg} p-4">
             <div class="flex items-center justify-between mb-2">
@@ -423,7 +417,7 @@
           </div>
         `;
       }).join('');
-    
+
       return `
         <div class="card p-5 mb-6 animate-fade-in">
           <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -441,23 +435,23 @@
               <div class="text-xs text-slate-500">parameter selesai</div>
             </div>
           </div>
-    
+
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             ${cards}
           </div>
-    
+
           <div class="mt-4 text-xs text-slate-400 italic">
             💡 Parameter yang sudah di-mark selesai di grade E dan D, hanya dihitung sebagai grade D (tertinggi).
           </div>
         </div>
       `;
     }
+
     // ============ CHART ============
     function renderCharts(data, kkleadGroups) {
       if (chartStatus) chartStatus.destroy();
       if (chartKK) chartKK.destroy();
 
-      // Doughnut Status
       chartStatus = new Chart(document.getElementById('chartStatus'), {
         type: 'doughnut',
         data: {
@@ -486,7 +480,6 @@
         }
       });
 
-      // Bar Chart per KK
       const allKKs = data.per_kk.map(k => k.kode_kk);
       const allProgress = data.per_kk.map(k => k.progress);
 
@@ -561,7 +554,7 @@
       const menu = document.getElementById('downloadMenu');
       menu.classList.toggle('hidden');
     }
-    
+
     // Tutup menu kalau klik di luar
     document.addEventListener('click', (e) => {
       const wrapper = document.getElementById('downloadMenuWrapper');
@@ -569,51 +562,49 @@
         document.getElementById('downloadMenu')?.classList.add('hidden');
       }
     });
-    
-    // ============ DOWNLOAD REKAP (dengan parameter jenis) ============
+
+    // ============ DOWNLOAD REKAP ============
     async function downloadRekap(jenis) {
-      // Tutup dropdown
       document.getElementById('downloadMenu')?.classList.add('hidden');
-    
+
       const periode = document.getElementById('filterPeriode').value;
       if (!currentUnit || !periode) {
         alert('Pilih unit dan periode dulu');
         return;
       }
-    
+
       if (typeof showToast === 'function') {
         showToast('Menyiapkan file rekap...', 'info');
       }
-    
+
       try {
         const data = await API.getRekap(currentUnit, periode, jenis);
         if (!data.rows || data.rows.length === 0) {
           if (typeof showToast === 'function') showToast('Tidak ada data untuk di-download', 'error');
           return;
         }
-    
+
         const escCSV = (val) => {
           const s = String(val ?? '').replace(/"/g, '""');
           return `"${s}"`;
         };
-    
+
         const lines = [data.headers.map(escCSV).join(';')];
-    
+
         data.rows.forEach(row => {
           lines.push(row.map(escCSV).join(';'));
         });
-    
-        // Kalau ada extraRows (untuk ringkasan KKLEAD)
+
         if (data.extraRows) {
           data.extraRows.forEach(row => {
             lines.push(row.map(escCSV).join(';'));
           });
         }
-    
+
         const csvContent = '\uFEFF' + lines.join('\r\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
-    
+
         const link = document.createElement('a');
         link.href = url;
         link.download = `${data.filename}.csv`;
@@ -621,7 +612,7 @@
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-    
+
         if (typeof showToast === 'function') {
           showToast(`${data.title} berhasil di-download`, 'success');
         }
@@ -634,101 +625,12 @@
         }
       }
     }
-    
+
     window.downloadRekap = downloadRekap;
     window.toggleDownloadMenu = toggleDownloadMenu;
 
+    // Panggil init paling bawah
     init();
-
-    // ============ DOWNLOAD REKAP ============
-    async function downloadRekap() {
-      const periode = document.getElementById('filterPeriode').value;
-      if (!currentUnit || !periode) {
-        alert('Pilih unit dan periode dulu');
-        return;
-      }
-    
-      if (typeof showToast === 'function') {
-        showToast('Menyiapkan file rekap...', 'info');
-      }
-    
-      try {
-        const data = await API.getRekap(currentUnit, periode);
-        if (!data.rows || data.rows.length === 0) {
-          if (typeof showToast === 'function') showToast('Tidak ada data untuk di-download', 'error');
-          return;
-        }
-    
-        const headers = [
-          'Kode KK',
-          'Sub Unsur',
-          'No Param',
-          'Uraian Parameter',
-          'Status',
-          'PIC',
-          'Grade Tertinggi',
-          'Grades Selesai',
-          'Jumlah Eviden',
-          'Terupload',
-          'Progress',
-          'Link Eviden',
-          'Update Terakhir',
-          'Update Oleh'
-        ];
-    
-        const escCSV = (val) => {
-          const s = String(val ?? '').replace(/"/g, '""');
-          return `"${s}"`;
-        };
-    
-        const lines = [headers.map(escCSV).join(';')];
-    
-        data.rows.forEach(r => {
-          const row = [
-            r.kode_kk,
-            r.subunsur,
-            r.no_parameter,
-            r.uraian_parameter,
-            r.status,
-            r.pic,
-            r.grade_tertinggi,
-            r.grades_done,
-            r.jumlah_eviden,
-            r.jumlah_terupload,
-            r.progress,
-            r.link_eviden,
-            r.updated_at,
-            r.updated_by
-          ];
-          lines.push(row.map(escCSV).join(';'));
-        });
-    
-        const csvContent = '\uFEFF' + lines.join('\r\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-    
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Rekap_SPIP_${data.unit}_${data.periode}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    
-        if (typeof showToast === 'function') {
-          showToast('File rekap berhasil di-download', 'success');
-        }
-      } catch (err) {
-        console.error('Download error:', err);
-        if (typeof showToast === 'function') {
-          showToast('Gagal download: ' + err.message, 'error');
-        } else {
-          alert('Gagal download: ' + err.message);
-        }
-      }
-    }
-    
-    window.downloadRekap = downloadRekap;
   </script>
 
 </body>
