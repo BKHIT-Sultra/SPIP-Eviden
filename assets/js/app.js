@@ -52,9 +52,15 @@ const APP = {
 
   loadingBox(message = 'Memuat...') {
     return `
-      <div class="card p-12 flex flex-col items-center justify-center">
-        <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-4 text-sm text-slate-500">${message}</p>
+      <div class="card p-12 flex flex-col items-center justify-center gap-4">
+        <div class="flex items-end gap-1.5 h-10">
+          <div class="w-1.5 bg-blue-600 rounded-full animate-bounce-bar" style="height: 40%; animation-delay: 0s"></div>
+          <div class="w-1.5 bg-blue-500 rounded-full animate-bounce-bar" style="height: 70%; animation-delay: 0.1s"></div>
+          <div class="w-1.5 bg-blue-400 rounded-full animate-bounce-bar" style="height: 100%; animation-delay: 0.2s"></div>
+          <div class="w-1.5 bg-blue-500 rounded-full animate-bounce-bar" style="height: 70%; animation-delay: 0.3s"></div>
+          <div class="w-1.5 bg-blue-600 rounded-full animate-bounce-bar" style="height: 40%; animation-delay: 0.4s"></div>
+        </div>
+        <p class="text-sm text-slate-500 font-medium">${this.esc(message)}</p>
       </div>
     `;
   },
