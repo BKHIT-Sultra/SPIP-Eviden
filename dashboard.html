@@ -36,6 +36,19 @@
             </svg>
             Terapkan
           </button>
+    
+          <!-- ✅ TOMBOL DOWNLOAD REKAP -->
+          <button onclick="downloadRekap()"
+                  class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg
+                         bg-white border border-slate-200 text-slate-700
+                         hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700
+                         active:scale-95 transition-all duration-150">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Download Rekap
+          </button>
         </div>
       </div>
       <div id="dashContent"></div>
@@ -496,6 +509,96 @@
     }
 
     init();
+
+    // ============ DOWNLOAD REKAP ============
+    async function downloadRekap() {
+      const periode = document.getElementById('filterPeriode').value;
+      if (!currentUnit || !periode) {
+        alert('Pilih unit dan periode dulu');
+        return;
+      }
+    
+      if (typeof showToast === 'function') {
+        showToast('Menyiapkan file rekap...', 'info');
+      }
+    
+      try {
+        const data = await API.getRekap(currentUnit, periode);
+        if (!data.rows || data.rows.length === 0) {
+          if (typeof showToast === 'function') showToast('Tidak ada data untuk di-download', 'error');
+          return;
+        }
+    
+        const headers = [
+          'Kode KK',
+          'Sub Unsur',
+          'No Param',
+          'Uraian Parameter',
+          'Status',
+          'PIC',
+          'Grade Tertinggi',
+          'Grades Selesai',
+          'Jumlah Eviden',
+          'Terupload',
+          'Progress',
+          'Link Eviden',
+          'Update Terakhir',
+          'Update Oleh'
+        ];
+    
+        const escCSV = (val) => {
+          const s = String(val ?? '').replace(/"/g, '""');
+          return `"${s}"`;
+        };
+    
+        const lines = [headers.map(escCSV).join(';')];
+    
+        data.rows.forEach(r => {
+          const row = [
+            r.kode_kk,
+            r.subunsur,
+            r.no_parameter,
+            r.uraian_parameter,
+            r.status,
+            r.pic,
+            r.grade_tertinggi,
+            r.grades_done,
+            r.jumlah_eviden,
+            r.jumlah_terupload,
+            r.progress,
+            r.link_eviden,
+            r.updated_at,
+            r.updated_by
+          ];
+          lines.push(row.map(escCSV).join(';'));
+        });
+    
+        const csvContent = '\uFEFF' + lines.join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+    
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Rekap_SPIP_${data.unit}_${data.periode}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    
+        if (typeof showToast === 'function') {
+          showToast('File rekap berhasil di-download', 'success');
+        }
+      } catch (err) {
+        console.error('Download error:', err);
+        if (typeof showToast === 'function') {
+          showToast('Gagal download: ' + err.message, 'error');
+        } else {
+          alert('Gagal download: ' + err.message);
+        }
+      }
+    }
+    
+    window.downloadRekap = downloadRekap;
   </script>
 
 </body>
